@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	_ "reflect"
+	"time"
 
 	"net"
 	"sync"
@@ -44,7 +45,7 @@ func NewServer(cfg ServerConfig) *Server {
 		
 		ServerConfig: cfg,
 		peers: make(map[net.Addr]*Peer),
-		addPeer: make(chan *Peer, 100),
+		addPeer: make(chan *Peer, 500),
 		delPeer: make(chan *Peer),
 		msgCh: make(chan *Message),
 	}
@@ -98,7 +99,7 @@ func (s *Server) Connect(addr string) error {
 	if s.isInPeerList(addr){
 		return nil
 	}
-	conn, err := net.Dial("tcp", addr)
+	conn, err := net.DialTimeout("tcp", addr, 1*time.Second)
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 
 	logrus.WithFields(logrus.Fields{
 		"addr" : peer.conn.RemoteAddr(),
-	}).Info(peer.info)
+	}).Info("connected")
 
 	logrus.WithFields(logrus.Fields{
 		"peer" : peer.conn.RemoteAddr(),
@@ -248,12 +249,13 @@ func (s *Server ) handleMessage(msg *Message) error{
 	case PeerList:
 		return s.handlePeerList(v)
 	}
-	fmt.Print(msg)
+	// fmt.Print(msg)
 	
 	return nil
 }
 
 func (s *Server) handlePeerList(l PeerList) error {
+	   
 		logrus.WithFields(logrus.Fields{
 		"we":s.ListenAddr,
 		"list": l.Peers,
