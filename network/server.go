@@ -94,7 +94,7 @@ func (s *Server) isInPeerList(addr string) bool {
 }
 
 // TODO 
-func (s *Server) Connect(addr string, info any) error {
+func (s *Server) Connect(addr string) error {
 	if s.isInPeerList(addr){
 		return nil
 	}
@@ -104,7 +104,6 @@ func (s *Server) Connect(addr string, info any) error {
 	}
 	peer := &Peer {
 			conn: conn,
-			info: info,
 		}
 
 	s.addPeer <- peer
@@ -263,7 +262,7 @@ func (s *Server) handlePeerList(l PeerList) error {
 	
 	for i :=0; i < len(l.Peers); i++ {
 		fmt.Print(l.Peers)
-		if err := s.Connect(l.Peers[i], nil); err != nil{
+		if err := s.Connect(l.Peers[i]); err != nil{
 			logrus.Errorf("failed to connect peer: %s", err)
 			continue
 		}
