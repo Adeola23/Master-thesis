@@ -24,6 +24,7 @@ type ServerConfig struct{
 
 type Server struct {
 	ServerConfig
+	peerLock sync.RWMutex
 
 	
 	listener net.Listener
@@ -45,7 +46,7 @@ func NewServer(cfg ServerConfig) *Server {
 		
 		ServerConfig: cfg,
 		peers: make(map[net.Addr]*Peer),
-		addPeer: make(chan *Peer, 500),
+		addPeer: make(chan *Peer, 20),
 		delPeer: make(chan *Peer),
 		msgCh: make(chan *Message),
 	}
@@ -167,6 +168,32 @@ func NewMessage(from string, payload any) *Message {
 	}
 }
 
+func (s *Server) AddPeer (p *Peer) {
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	s.peers[p.conn.RemoteAddr()] = p
+
+}
+
+
+func (s *Server) Peers() [] string {
+	s.peerLock.RLock()
+	defer s.peerLock.RUnlock()
+
+	peers := make([] string, len(s.peers))
+
+	it := 0
+
+	for _, peer := range s.peers {
+		peers[it] = peer.listenAddr
+		it ++
+	}
+
+	return peers
+}
+
+
 func (s *Server) handleNewPeer(peer *Peer) error {
 	s.SendHandshake(peer)
 	hs, err := s.handShake(peer)
@@ -192,7 +219,9 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	if err := s.sendPeerList(peer); err != nil {
 		return fmt.Errorf("peerlist error : %s", err)
 	}
-	s.peers[peer.conn.RemoteAddr()] = peer	
+	// s.peers[peer.conn.RemoteAddr()] = peer	
+
+	s.AddPeer(peer)
 
 	return nil
 }
@@ -200,14 +229,15 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 func (s *Server) sendPeerList(p *Peer ) error {
 	
 	peerList := PeerList{
-		Peers : []string{},
+		Peers : s.Peers(),
 	}
+
 
 	
 
-	for _, peer  := range s.peers{
-		peerList.Peers = append(peerList.Peers, peer.listenAddr)
-	}
+	// for _, peer  := range s.peers{
+	// 	peerList.Peers = append(peerList.Peers, peer.listenAddr)
+	// }
 
 	if len(peerList.Peers) == 0 {
 		return nil

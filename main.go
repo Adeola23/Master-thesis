@@ -40,7 +40,7 @@ func main () {
 
 	time.Sleep(1 * time.Second)
 
-	peerD.Connect(peerC.ListenAddr)
+	peerA.Connect(peerD.ListenAddr)
 
 
 
