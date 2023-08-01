@@ -16,10 +16,7 @@ func (n NetAddr) String() string {return string(n)}
 func (n NetAddr) Network() string {return "tcp"}
 
 
-type Message struct {
-	Payload any
-	From string
-}
+
 
 type Peer struct {
 	conn net.Conn

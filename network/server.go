@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	_ "reflect"
+	
 	"time"
 
 	"net"
@@ -30,13 +31,16 @@ type Server struct {
 	listener net.Listener
 	transport *TCPTransport
 	mu  sync.RWMutex
-	peers map [net.Addr]*Peer
+	peers map [string]*Peer
 	addPeer chan *Peer
 	delPeer chan *Peer
 	msgCh chan *Message
+	broadcastch chan BroadcastTo
 	
 	
 }
+//server handles the communication, it handles the transport, it keeps track of peers
+// A peer is a server on the other side of the connection.
 
 
 
@@ -45,10 +49,11 @@ func NewServer(cfg ServerConfig) *Server {
 	s := &Server{
 		
 		ServerConfig: cfg,
-		peers: make(map[net.Addr]*Peer),
+		peers: make(map[string]*Peer),
 		addPeer: make(chan *Peer, 20),
 		delPeer: make(chan *Peer),
 		msgCh: make(chan *Message),
+		broadcastch:  make(chan BroadcastTo, 100),
 	}
 	tr := NewTCPTransport(s.ListenAddr)
 	s.transport = tr
@@ -79,6 +84,7 @@ func (s *Server) SendHandshake(p *Peer) error{
 
 	buf := new(bytes.Buffer)
 	if err := gob.NewEncoder(buf).Encode(hs); err != nil {
+		return err
 
 	}
 
@@ -133,20 +139,28 @@ network address as the key and then prints a message indicating the new peer con
 func (s *Server) loop() {
 	for {
 		select{
+		case msg := <- s.broadcastch:
+			go func(){
+				if err := s.Broadcast(msg); err != nil {
+					logrus.Errorf("broadcast error: %s", err)
+				}
+			}()
 		case peer := <- s.delPeer:
 			logrus.WithFields(logrus.Fields{
 				"addr" : peer.conn.RemoteAddr(),
 			}).Info("peer disconneted")
-			delete(s.peers, peer.conn.RemoteAddr())
+			delete(s.peers, peer.conn.RemoteAddr().String())
 		case peer:= <- s.addPeer:
 			if err := s.handleNewPeer(peer); err != nil {
 				logrus.Errorf("handle peer error: %s", err)
 			}
 			
 		case msg := <- s.msgCh:
-			if err := s.handleMessage(msg); err != nil {
-				panic(err)
-			}
+			go func() {
+				if err := s.handleMessage(msg); err != nil {
+					logrus.Errorf("handle msg error: %s", err)
+				}
+			}()
 		}
 	}
 }
@@ -161,18 +175,13 @@ type PeerList struct {
 	Peers []string
 }
 
-func NewMessage(from string, payload any) *Message {
-	return &Message{
-		From: from,
-		Payload: payload,
-	}
-}
+
 
 func (s *Server) AddPeer (p *Peer) {
 	s.peerLock.Lock()
 	defer s.peerLock.Unlock()
 
-	s.peers[p.conn.RemoteAddr()] = p
+	s.peers[p.conn.RemoteAddr().String()] = p
 
 }
 
@@ -199,9 +208,10 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	hs, err := s.handShake(peer)
 	if err != nil {
 		peer.conn.Close()
-		delete(s.peers, peer.conn.RemoteAddr())
+		delete(s.peers, peer.conn.RemoteAddr().String())
 		return fmt.Errorf("%s handshake with incoming peer failed: %s",s.ListenAddr, err)
 		}
+	
 
 	go peer.readLoop(s.msgCh)
 
@@ -251,6 +261,32 @@ func (s *Server) sendPeerList(p *Peer ) error {
 	return p.Send(buf.Bytes())
 
 }
+
+func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
+	msg := NewMessage(s.ListenAddr, broadcastMsg.Payload)
+
+	buf := new(bytes.Buffer)
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		return err
+	}
+
+	for _, addr := range broadcastMsg.To {
+		peer, ok := s.peers[addr]
+
+		if ok {
+			go func(peer *Peer) {
+				if err := peer.Send(buf.Bytes()); err != nil {
+					logrus.Errorf("broadcast to peer error: %s", err)
+				}
+			}(peer)
+		}
+	}
+
+	return nil
+}
+
+
+
 
 func (s* Server) handShake(p *Peer) (*Handshake, error) {
 
