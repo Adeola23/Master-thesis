@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-
 	_ "reflect"
+	
 
 	"time"
 
@@ -38,6 +38,7 @@ type Server struct {
 	delPeer chan *Peer
 	msgCh chan *Message
 	broadcastch chan BroadcastTo
+	metrics *Metrics
 	
 	
 }
@@ -57,7 +58,10 @@ func NewServer(cfg ServerConfig) *Server {
 		msgCh: make(chan *Message, 100),
 		broadcastch: make(chan BroadcastTo, 100),
 		
+		
 	}
+
+	// s.metrics := newMetrics(cfg.ListenAddr)
 	tr := NewTCPTransport(s.ListenAddr)
 	s.transport = tr
 	tr.AddPeer = s.addPeer
@@ -65,15 +69,15 @@ func NewServer(cfg ServerConfig) *Server {
 
 
 
-	go func(s *Server){
-		apiServer := NewAPIServer(cfg.APIlistenAddr)
+	// go func(s *Server){
+	// 	apiServer := NewAPIServer(cfg.APIlistenAddr)
 		
-		logrus.WithFields(logrus.Fields{
-			"listenAddr": cfg.APIlistenAddr,
-		}).Info("starting API server")
-		apiServer.Run()
+	// 	logrus.WithFields(logrus.Fields{
+	// 		"listenAddr": cfg.APIlistenAddr,
+	// 	}).Info("starting API server")
+	// 	apiServer.Run()
 
-	}(s)
+	// }(s)
 	
 
 	return s
@@ -85,6 +89,8 @@ func (s *Server) Start() {
 	logrus.WithFields(logrus.Fields{
 		"port" : s.ListenAddr,
 	}).Info("started new peer server")
+
+	
 
 
 	s.transport.ListenAndAccept()
@@ -333,17 +339,38 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	for _, addr := range broadcastMsg.To {
 		peer, ok := s.peers[addr]
 
+		
+
+
+		
+
 		// fmt.Print(peer)
 
 		if ok {
+			
 			go func(peer *Peer) {
+
+				metrics := newMetrics(peer.conn.RemoteAddr().String())
+
+				metrics.fixWriteDuration()
+
+				logrus.WithFields(logrus.Fields{
+
+				}).Info(metrics.string())
+
+
+				
+
 				if err := peer.Send(buf.Bytes()); err != nil {
 					logrus.Errorf("broadcast to peer error: %s", err)
 				}
+				
 			}(peer)
 			
 		}
 	}
+
+	
 
 	
 
@@ -358,6 +385,8 @@ func (s *Server) SendToPeers(payload any, addr ...string) {
 		To:      addr,
 		Payload: payload,
 	}
+
+	
 }
 
 
@@ -394,11 +423,16 @@ func (s *Server ) handleMessage(msg *Message) error{
 }
 
 func (s *Server) handleMsg(from string, msg any) error {
+
+	metrics := newMetrics(from)
+
+	metrics.fixReadDuration()
+
 	logrus.WithFields(logrus.Fields{
 		"sender":from,
 		"message": msg,
 
-	}).Info("recieved message")
+	}).Info(metrics.string())
 
 	return nil
 
