@@ -6,7 +6,7 @@ type Message struct {
 }
 
 type BroadcastTo struct {
-	To      []string
+	To      string
 	Payload any
 }
 
@@ -26,7 +26,7 @@ func NewMessage(from string, payload any) *Message {
 	}
 }
 
-func (m *MessageState) sendToPlayers(payload any, addr ...string) {
+func (m *MessageState) sendToPlayers(payload any, addr string) {
 	m.broadcastch <- BroadcastTo{
 		To:      addr,
 		Payload: payload,

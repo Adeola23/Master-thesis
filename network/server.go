@@ -336,8 +336,8 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 		return err
 	}
 
-	for _, addr := range broadcastMsg.To {
-		peer, ok := s.peers[addr]
+	
+		peer, ok := s.peers[broadcastMsg.To]
 
 		
 
@@ -368,7 +368,7 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 			}(peer)
 			
 		}
-	}
+	
 
 	
 
@@ -379,7 +379,7 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 
 
 
-func (s *Server) SendToPeers(payload any, addr ...string) {
+func (s *Server) SendToPeers(payload any, addr string) {
 	
 	 s.broadcastch <- BroadcastTo{
 		To:      addr,
@@ -415,18 +415,26 @@ func (s *Server ) handleMessage(msg *Message) error{
 	case PeerList:
 		return s.handlePeerList(v)
 	case string:
-		return s.handleMsg(msg.From, msg.Payload)
+		return s.handleMsg(msg.Payload, msg.From)
 	}
 
 	
 	return nil
 }
 
-func (s *Server) handleMsg(from string, msg any) error {
+func (s *Server) handleMsg( msg any, from string) error {
+
 
 	metrics := newMetrics(from)
 
 	metrics.fixReadDuration()
+
+	recMsg := msg
+
+	switch recMsg{
+	case "HI":
+		 s.resp("welcome", from)
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"sender":from,
@@ -438,6 +446,16 @@ func (s *Server) handleMsg(from string, msg any) error {
 
 	
 }
+
+func (s *Server)resp( msg any, addr string) {
+	s.broadcastch <- BroadcastTo{
+		To: addr,
+		Payload: msg,
+	}
+	
+}
+
+
 
 func (s *Server) handlePeerList(l PeerList) error {
 	   

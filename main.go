@@ -72,43 +72,43 @@ func main () {
 
 	peerC.Connect(peerB.ListenAddr)
 
-	to := []string{":4000"}
+	// to := []string{":4000"}
 	//to1 := []string{":4500"}
 
 	time.Sleep(1 * time.Second)
 
-	peerC.SendToPeers("Hey", to...)
+	peerC.SendToPeers("HI", ":4000")
 
-	to1 := []string{":4500"}
-	//to1 := []string{":4500"}
+	// to1 := []string{":4500"}
+	// //to1 := []string{":4500"}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
-	peerA.SendToPeers("HI 45000", to1...)
-
-
-	to2 := []string{":3000"}
-	//to1 := []string{":4500"}
-
-	time.Sleep(1 * time.Second)
-
-	peerC.SendToPeers("HI 3000", to2...)
+	peerA.SendToPeers("HI", ":4300")
 
 
-	to3 := []string{":4300"}
-	//to1 := []string{":4500"}
+	// to2 := []string{":3000"}
+	// //to1 := []string{":4500"}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
-	peerB.SendToPeers("HI 4300", to3...)
+	// peerC.SendToPeers("HI 3000", to2...)
 
 
-	to4 := []string{":4000"}
-	//to1 := []string{":4500"}
+	// to3 := []string{":4300"}
+	// //to1 := []string{":4500"}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
-	peerA.SendToPeers("HI 4000", to4...)
+	// peerB.SendToPeers("HI 4300", to3...)
+
+
+	// to4 := []string{":4000"}
+	// //to1 := []string{":4500"}
+
+	// time.Sleep(1 * time.Second)
+
+	// peerA.SendToPeers("HI 4000", to4...)
 
 
 
