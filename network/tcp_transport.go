@@ -47,6 +47,8 @@ func (p *Peer) readLoop(msgch chan *Message){
 			break
 		}
 
+		
+
 		msgch <- msg
 
 		// msgch <- &Message{

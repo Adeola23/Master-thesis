@@ -10,6 +10,8 @@ type BroadcastTo struct {
 	Payload any
 }
 
+type MessageReady struct{}
+
 type MessageState struct{
 	listenAddr string
 
