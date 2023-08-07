@@ -1,4 +1,4 @@
-package network
+package metrics
 
 
 import (
@@ -21,7 +21,7 @@ type Metrics struct {
 	stat []string
 }
 
-func newMetrics(addr string) (m *Metrics) {
+func NewMetrics(addr string) (m *Metrics) {
 	return &Metrics{
 		addr: addr,
 		tm:   time.Now(),
@@ -35,41 +35,41 @@ func newMetrics(addr string) (m *Metrics) {
 	}
 }
 
-func (m *Metrics) reset() {
+func (m *Metrics) Reset() {
 	m.tm = time.Now()
 }
 
-func (m *Metrics) setTopic(topic string) {
+func (m *Metrics) SetTopic(topic string) {
 	m.topic = topic
 }
 
 const statPattern = "%s (%s)"
 
-func (m *Metrics) fixHandshake() {
+func (m *Metrics) FixHandshake() {
 	m.handshake = time.Since(m.tm)
 	m.stat = append(m.stat, fmt.Sprintf(statPattern, "handshake", prepareValue(m.handshake)))
-	m.reset()
+	m.Reset()
 }
 
-func (m *Metrics) fixReadDuration() {
+func (m *Metrics) FixReadDuration() {
 	m.read = time.Since(m.tm)
 	m.stat = append(m.stat, fmt.Sprintf(statPattern, "read", prepareValue(m.read)))
-	m.reset()
+	m.Reset()
 }
 
-func (m *Metrics) fixHandleDuration() {
+func (m *Metrics) FixHandleDuration() {
 	m.handle = time.Since(m.tm)
 	m.stat = append(m.stat, fmt.Sprintf(statPattern, "handle", prepareValue(m.handle)))
-	m.reset()
+	m.Reset()
 }
 
-func (m *Metrics) fixWriteDuration() {
+func (m *Metrics) FixWriteDuration() {
 	m.write = time.Since(m.tm)
 	m.stat = append(m.stat, fmt.Sprintf(statPattern, "write", prepareValue(m.write)))
-	m.reset()
+	m.Reset()
 }
 
-func (m *Metrics) string() (line string) {
+func (m *Metrics) String() (line string) {
 	var total time.Duration
 
 	if m.handshake >= 0 {

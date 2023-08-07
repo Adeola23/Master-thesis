@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	_ "reflect"
-	
 
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"gitlab.com/adeola/messaging-library/metrics"
 )
 
 
@@ -38,7 +38,7 @@ type Server struct {
 	delPeer chan *Peer
 	msgCh chan *Message
 	broadcastch chan BroadcastTo
-	metrics *Metrics
+	
 	
 	
 }
@@ -263,7 +263,7 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 		delete(s.peers, peer.conn.RemoteAddr().String())
 		return fmt.Errorf("%s handshake with incoming peer failed: %s",s.ListenAddr, err)
 		}
-	metrics := newMetrics(peer.conn.RemoteAddr().String())
+	metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
 	go peer.readLoop(s.msgCh)
 	
 	logrus.WithFields(logrus.Fields{
@@ -284,11 +284,11 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 
 	s.AddPeer(peer)
 
-	metrics.fixHandshake()
+	metric.FixHandshake()
 
 	logrus.WithFields(logrus.Fields{
 		
-	}).Info(metrics.string())
+	}).Info(metric.String())
 
 	return nil
 }
@@ -339,27 +339,21 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	
 		peer, ok := s.peers[broadcastMsg.To]
 
-		
-
-
-		
-
 		// fmt.Print(peer)
+
+		//Buffering the message when nodes are not connected.
 
 		if ok {
 			
 			go func(peer *Peer) {
 
-				metrics := newMetrics(peer.conn.RemoteAddr().String())
+				metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
 
-				metrics.fixWriteDuration()
+				metric.FixWriteDuration()
 
 				logrus.WithFields(logrus.Fields{
 
-				}).Info(metrics.string())
-
-
-				
+				}).Info(metric.String())
 
 				if err := peer.Send(buf.Bytes()); err != nil {
 					logrus.Errorf("broadcast to peer error: %s", err)
@@ -373,6 +367,11 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	
 
 	
+
+		
+
+
+
 
 	return nil
 }
@@ -416,6 +415,7 @@ func (s *Server ) handleMessage(msg *Message) error{
 		return s.handlePeerList(v)
 	case string:
 		return s.handleMsg(msg.Payload, msg.From)
+	case int:
 	}
 
 	
@@ -425,14 +425,14 @@ func (s *Server ) handleMessage(msg *Message) error{
 func (s *Server) handleMsg( msg any, from string) error {
 
 
-	metrics := newMetrics(from)
+	metric := metrics.NewMetrics(from)
 
-	metrics.fixReadDuration()
+	metric.FixReadDuration()
 
 	recMsg := msg
 
 	switch recMsg{
-	case "HI":
+	case "YOU":
 		 s.resp("welcome", from)
 	}
 
@@ -440,7 +440,7 @@ func (s *Server) handleMsg( msg any, from string) error {
 		"sender":from,
 		"message": msg,
 
-	}).Info(metrics.string())
+	}).Info(metric.String())
 
 	return nil
 

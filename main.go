@@ -1,13 +1,12 @@
 package main
 
 import (
-	_"encoding/gob"
-	_"fmt"
+	_ "encoding/gob"
 	_ "fmt"
-	_"net"
+	_ "net"
 	"time"
 
-	_"github.com/sirupsen/logrus"
+	_ "github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/network"
 )
 
@@ -77,14 +76,14 @@ func main () {
 
 	time.Sleep(1 * time.Second)
 
-	peerC.SendToPeers("HI", ":4000")
+	peerC.SendToPeers("YOU", ":4000")
 
 	// to1 := []string{":4500"}
 	// //to1 := []string{":4500"}
 
-	// time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 
-	peerA.SendToPeers("HI", ":4300")
+	peerA.SendToPeers("YOU", ":4300")
 
 
 	// to2 := []string{":3000"}
