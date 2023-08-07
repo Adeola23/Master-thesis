@@ -42,10 +42,20 @@ type Server struct {
 	
 	
 }
+
+
 //server handles the communication, it handles the transport, it keeps track of peers
 // A peer is a server on the other side of the connection.
 
+type Handshake struct {
+	Version string
+	ListenAddr string
+	
+}
 
+type PeerList struct {
+	Peers []string
+}
 
 
 func NewServer(cfg ServerConfig) *Server {
@@ -212,15 +222,7 @@ func (s *Server) loop() {
 	}
 }
 
-type Handshake struct {
-	Version string
-	ListenAddr string
-	
-}
 
-type PeerList struct {
-	Peers []string
-}
 
 
 
@@ -250,48 +252,7 @@ func (s *Server) Peers() [] string {
 }
 
 
-func (s *Server) handleNewPeer(peer *Peer) error {
-	
-	s.SendHandshake(peer)
 
-
-	hs, err := s.handShake(peer)
-
-	
-	if err != nil {
-		peer.conn.Close()
-		delete(s.peers, peer.conn.RemoteAddr().String())
-		return fmt.Errorf("%s handshake with incoming peer failed: %s",s.ListenAddr, err)
-		}
-	metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
-	go peer.readLoop(s.msgCh)
-	
-	logrus.WithFields(logrus.Fields{
-		"addr" : peer.conn.RemoteAddr(),
-	}).Info("connected")
-
-	logrus.WithFields(logrus.Fields{
-		"peer" : peer.conn.RemoteAddr(),
-		"version": hs.Version,
-		"listenAddr": peer.listenAddr,
-		"we": s.ListenAddr,
-	}).Info("handshake successfull: new peer connected")
-
-	if err := s.sendPeerList(peer); err != nil {
-		return fmt.Errorf("peerlist error : %s", err)
-	}
-	// s.peers[peer.conn.RemoteAddr()] = peer	
-
-	s.AddPeer(peer)
-
-	metric.FixHandshake()
-
-	logrus.WithFields(logrus.Fields{
-		
-	}).Info(metric.String())
-
-	return nil
-}
 
 
 
@@ -362,16 +323,6 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 			}(peer)
 			
 		}
-	
-
-	
-
-	
-
-		
-
-
-
 
 	return nil
 }
@@ -387,7 +338,6 @@ func (s *Server) SendToPeers(payload any, addr string) {
 
 	
 }
-
 
 
 
@@ -408,76 +358,12 @@ func (s* Server) handShake(p *Peer) (*Handshake, error) {
 	return hs, nil
 }
 
-func (s *Server ) handleMessage(msg *Message) error{
-	switch v:=msg.Payload.(type){
-	
-	case PeerList:
-		return s.handlePeerList(v)
-	case string:
-		return s.handleMsg(msg.Payload, msg.From)
-	case int:
-	}
-
-	
-	return nil
-}
-
-func (s *Server) handleMsg( msg any, from string) error {
-
-
-	metric := metrics.NewMetrics(from)
-
-	metric.FixReadDuration()
-
-	recMsg := msg
-
-	switch recMsg{
-	case "YOU":
-		 s.resp("welcome", from)
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"sender":from,
-		"message": msg,
-
-	}).Info(metric.String())
-
-	return nil
-
-	
-}
-
-func (s *Server)resp( msg any, addr string) {
-	s.broadcastch <- BroadcastTo{
-		To: addr,
-		Payload: msg,
-	}
-	
-}
 
 
 
-func (s *Server) handlePeerList(l PeerList) error {
-	   
-	// 	logrus.WithFields(logrus.Fields{
-	// 	"we":s.ListenAddr,
-	// 	"list": l.Peers,
-
-	// }).Info("recieved message")
-	
-	for i :=0; i < len(l.Peers); i++ {
-
-		if err := s.Connect(l.Peers[i]); err != nil{
-			logrus.Errorf("failed to connect peer: %s", err)
-			continue
-		}
-	}
-	return nil
-}
 
 func init () {
 	gob.Register(PeerList{})
-	
 
 }
 
