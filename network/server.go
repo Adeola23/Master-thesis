@@ -93,8 +93,16 @@ func NewServer(cfg ServerConfig) *Server {
 	return s
 }
 
+
+
 func (s *Server) Start() {
+	
 	go s.loop()
+
+	
+
+
+
 	fmt.Printf("server running on port %s \n", s.ListenAddr)
 	logrus.WithFields(logrus.Fields{
 		"port" : s.ListenAddr,
@@ -234,6 +242,26 @@ func (s *Server) AddPeer (p *Peer) {
 
 }
 
+func (s *Server) Ping () {
+	interval := 2 * time.Second
+	for {
+		// if len(s.Peers()) == 0 {
+		// 	fmt.Print(0)
+		// }
+
+		time.Sleep(interval)
+		for _, addr := range s.Peers(){
+		logrus.WithFields(logrus.Fields{
+	     }).Info("Sending PING")
+		s.SendToPeers("PING", addr)
+
+	}
+
+	}
+	
+
+}
+
 
 func (s *Server) Peers() [] string {
 	s.peerLock.RLock()
@@ -261,10 +289,6 @@ func (s *Server) sendPeerList(p *Peer ) error {
 	peerList := PeerList{
 		Peers : s.Peers(),
 	}
-
-
-	
-
 	// for _, peer  := range s.peers{
 	// 	peerList.Peers = append(peerList.Peers, peer.listenAddr)
 	// }
@@ -296,8 +320,6 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
 		return err
 	}
-
-	
 		peer, ok := s.peers[broadcastMsg.To]
 
 		// fmt.Print(peer)

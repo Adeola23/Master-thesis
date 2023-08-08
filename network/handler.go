@@ -1,12 +1,13 @@
 package network
 
 import (
-
 	"fmt"
+	
 
 	"github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/metrics"
 )
+
 
 
 func (s *Server) handleNewPeer(peer *Peer) error {
@@ -37,6 +38,8 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	}
 	// s.peers[peer.conn.RemoteAddr()] = peer	
 
+
+
 	s.AddPeer(peer)
 
 	metric.FixHandshake()
@@ -44,6 +47,12 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	logrus.WithFields(logrus.Fields{
 		
 	}).Info(metric.String())
+
+	
+
+
+
+
 
 	return nil
 }
@@ -84,8 +93,8 @@ func (s *Server) handleMsg( msg any, from string) error {
 	recMsg := msg
 
 	switch recMsg{
-	case "YOU":
-		 s.resp("welcome", from)
+	case "PING":
+		 s.resp("PONG", from)
 	}
 
 	logrus.WithFields(logrus.Fields{

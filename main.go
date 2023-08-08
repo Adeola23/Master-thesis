@@ -4,11 +4,14 @@ import (
 	_ "encoding/gob"
 	_ "fmt"
 	_ "net"
+	"sync"
 	"time"
 
 	_ "github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/network"
 )
+
+var wg sync.WaitGroup
 
 func makeServerAndStart(addr, apiddr string) *network.Server{
 	cfg := network.ServerConfig{
@@ -137,6 +140,15 @@ func main () {
 	// 		fmt.Print(err)
 			
 	// }
+
+	
+
+	go peerA.Ping()
+	go peerB.Ping()
+
+
+
+	
 	
 
 	
