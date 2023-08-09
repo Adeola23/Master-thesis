@@ -144,12 +144,14 @@ func main () {
 	
 
 	go peerA.Ping()
-	// go peerB.Ping()
+	go peerB.Ping()
 	// go peerC.Ping()
 	// go peerD.Ping()
 
 
 	go peerA.StartPeerStatusChecker(time.Second * 3)
+	go peerB.StartPeerStatusChecker(time.Second * 3)
+
 
 
 	time.Sleep(1 * time.Second)
@@ -157,8 +159,8 @@ func main () {
 	peerC.SendToPeers("YOU", ":3000")
 
 
-	time.Sleep(time.Second * 5)
-    peerA.UpdatePeerStatus(":4000", false)
+	// time.Sleep(time.Second * 5)
+    // peerA.UpdatePeerStatus(":4000", false)
 
     // Simulate a peer becoming reconnected
     

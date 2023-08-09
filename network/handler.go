@@ -38,8 +38,6 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	}
 	// s.peers[peer.conn.RemoteAddr()] = peer	
 
-
-
 	s.AddPeer(peer)
 
 	metric.FixHandshake()
@@ -47,12 +45,6 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	logrus.WithFields(logrus.Fields{
 		
 	}).Info(metric.String())
-
-	
-
-
-
-
 
 	return nil
 }
@@ -100,10 +92,6 @@ func (s *Server) handleMsg( msg any, from string, to string) error {
 	case "PONG":
 		s.UpdatePeerStatus(from, true)
 	}
-
-	
-	
-
 	logrus.WithFields(logrus.Fields{
 		"sender":from,
 		"message": msg,
@@ -139,15 +127,14 @@ func (s *Server) StartPeerStatusChecker(interval time.Duration) {
 func (s *Server) checkPeerStatus() {
     for _, peer := range s.peers {
 
-		fmt.Print(peer, "test")
-
 		if !peer.connected{
-			logrus.Fatal("peer disconnected", peer)
+			peer.conn.Close()
+			delete(s.peers, peer.conn.RemoteAddr().String())
+			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
 		}
        
     }
 }
-
 
 
 

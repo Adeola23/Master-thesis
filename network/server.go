@@ -280,19 +280,7 @@ func (s *Server) Peers() [] string {
 	return peers
 }
 
-func (s *Server) Disconnect() {
 
-	fmt.Print(s.ListenAddr)
-	conn, err := net.Dial("tcp", s.ListenAddr)
-
-	if err != nil {
-		logrus.Error(err)
-	}
-	if err := conn.Close(); err != nil {
-
-		fmt.Print("failed to disconnect")
-	}
-}
 
 
 
