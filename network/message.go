@@ -3,6 +3,7 @@ package network
 type Message struct {
 	Payload any
 	From    string
+	To 		string
 }
 
 type BroadcastTo struct {
@@ -19,10 +20,11 @@ type MessageState struct{
 
 }
 
-func NewMessage(from string, payload any) *Message {
+func NewMessage(from string, payload any, to string) *Message {
 	return &Message{
 		From:    from,
 		Payload: payload,
+		To: to,
 	}
 }
 

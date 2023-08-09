@@ -254,13 +254,14 @@ func (s *Server) Ping () {
 		logrus.WithFields(logrus.Fields{
 	     }).Info("Sending PING")
 		s.SendToPeers("PING", addr)
-
+		
+		
 	}
 
 	}
 	
-
 }
+
 
 
 func (s *Server) Peers() [] string {
@@ -277,6 +278,20 @@ func (s *Server) Peers() [] string {
 	}
 
 	return peers
+}
+
+func (s *Server) Disconnect() {
+
+	fmt.Print(s.ListenAddr)
+	conn, err := net.Dial("tcp", s.ListenAddr)
+
+	if err != nil {
+		logrus.Error(err)
+	}
+	if err := conn.Close(); err != nil {
+
+		fmt.Print("failed to disconnect")
+	}
 }
 
 
@@ -297,7 +312,7 @@ func (s *Server) sendPeerList(p *Peer ) error {
 		return nil
 	}
 
-	msg := NewMessage(s.ListenAddr, peerList)
+	msg := NewMessage(s.ListenAddr, peerList, p.listenAddr)
 	buf := new(bytes.Buffer)
 	if err:= gob.NewEncoder(buf).Encode(msg); err != nil {
 		return err
@@ -312,7 +327,7 @@ func (s *Server) sendPeerList(p *Peer ) error {
 
 func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 
-	msg := NewMessage(s.ListenAddr, broadcastMsg.Payload)
+	msg := NewMessage(s.ListenAddr, broadcastMsg.Payload, broadcastMsg.To)
 
 	// fmt.Print(msg)
 

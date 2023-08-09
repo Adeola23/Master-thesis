@@ -22,6 +22,7 @@ type Peer struct {
 	conn net.Conn
 	info any
 	listenAddr string
+	connected bool
 }
 
 func (p *Peer) Send(b []byte) error{

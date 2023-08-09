@@ -2,7 +2,7 @@ package network
 
 import (
 	"fmt"
-	
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/metrics"
@@ -85,7 +85,9 @@ func (s *Server)resp( msg any, addr string) {
 	
 }
 
-func (s *Server) handleMsg( msg any, from string) error {
+
+
+func (s *Server) handleMsg( msg any, from string, to string) error {
 	metric := metrics.NewMetrics(from)
 
 	metric.FixReadDuration()
@@ -95,7 +97,12 @@ func (s *Server) handleMsg( msg any, from string) error {
 	switch recMsg{
 	case "PING":
 		 s.resp("PONG", from)
+	case "PONG":
+		s.UpdatePeerStatus(from, true)
 	}
+
+	
+	
 
 	logrus.WithFields(logrus.Fields{
 		"sender":from,
@@ -110,13 +117,47 @@ func (s *Server) handleMsg( msg any, from string) error {
 
 
 
+func (s *Server ) UpdatePeerStatus(addr string, connected bool) {
+	 if peer, ok := s.peers[addr]; ok {
+		 peer.connected = connected
+	 }
+
+}
+
+func (s *Server) StartPeerStatusChecker(interval time.Duration) {
+    ticker := time.NewTicker(interval)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            s.checkPeerStatus()
+        }
+    }
+}
+
+func (s *Server) checkPeerStatus() {
+    for _, peer := range s.peers {
+
+		fmt.Print(peer, "test")
+
+		if !peer.connected{
+			logrus.Fatal("peer disconnected", peer)
+		}
+       
+    }
+}
+
+
+
+
 func (s *Server ) handleMessage(msg *Message) error{
 	switch v:=msg.Payload.(type){
 	
 	case PeerList:
 		return s.handlePeerList(v)
 	case string:
-		return s.handleMsg(msg.Payload, msg.From)
+		return s.handleMsg(msg.Payload, msg.From, msg.To)
 	case int:
 	}
 
