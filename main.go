@@ -4,21 +4,18 @@ import (
 	_ "encoding/gob"
 	_ "fmt"
 	_ "net"
-	
+
 	"time"
 
 	_ "github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/network"
 )
 
-
-
-func makeServerAndStart(addr, apiddr string) *network.Server{
+func makeServerAndStart(addr, apiddr string) *network.Server {
 	cfg := network.ServerConfig{
-		ListenAddr: addr,
+		ListenAddr:    addr,
 		APIlistenAddr: apiddr,
-		Vesrison: "two",
-		
+		Vesrison:      "two",
 	}
 	server := network.NewServer(cfg)
 	time.Sleep(1 * time.Second)
@@ -29,8 +26,8 @@ func makeServerAndStart(addr, apiddr string) *network.Server{
 
 }
 
-func main () {
-	peerA  := makeServerAndStart(":3000", ":3001")
+func main() {
+	peerA := makeServerAndStart(":3000", ":3001")
 	peerB := makeServerAndStart(":4000", ":4001")
 	peerC := makeServerAndStart(":4300", ":4301")
 	peerD := makeServerAndStart(":4500", ":4501")
@@ -42,8 +39,6 @@ func main () {
 	// peerJ := makeServerAndStart(":4400")
 	// peerK := makeServerAndStart(":4600")
 	// peerL := makeServerAndStart(":4800")
-	
-
 
 	time.Sleep(1 * time.Second)
 
@@ -52,8 +47,6 @@ func main () {
 	time.Sleep(1 * time.Second)
 
 	peerA.Connect(peerD.ListenAddr)
-
-
 
 	// time.Sleep(1 * time.Second)
 
@@ -65,10 +58,6 @@ func main () {
 	// peerA.SendToPeers("Hey", to...)
 
 	// time.Sleep(1 * time.Second)
-
-	
-
-
 
 	time.Sleep(1 * time.Second)
 
@@ -88,14 +77,12 @@ func main () {
 
 	peerA.SendToPeers("YOU", ":4300")
 
-
 	// to2 := []string{":3000"}
 	// //to1 := []string{":4500"}
 
 	// time.Sleep(1 * time.Second)
 
 	// peerC.SendToPeers("HI 3000", to2...)
-
 
 	// to3 := []string{":4300"}
 	// //to1 := []string{":4500"}
@@ -104,17 +91,12 @@ func main () {
 
 	// peerB.SendToPeers("HI 4300", to3...)
 
-
 	// to4 := []string{":4000"}
 	// //to1 := []string{":4500"}
 
 	// time.Sleep(1 * time.Second)
 
 	// peerA.SendToPeers("HI 4000", to4...)
-
-
-
-	
 
 	// time.Sleep(1 * time.Second)
 
@@ -128,7 +110,6 @@ func main () {
 
 	// msg := new(network.Message)
 
-
 	//  time.Sleep(1 * time.Second)
 	// conn, err := net.DialTimeout("tcp", ":3000", 1*time.Second)
 	// if err != nil {
@@ -136,49 +117,29 @@ func main () {
 	// }
 
 	// time.Sleep(1 * time.Second)
-    // if err := gob.NewDecoder(conn).Decode(msg); err != nil {
+	// if err := gob.NewDecoder(conn).Decode(msg); err != nil {
 	// 		fmt.Print(err)
-			
-	// }
 
-	
+	// }
 
 	go peerA.Ping()
 	go peerB.Ping()
 	// go peerC.Ping()
 	// go peerD.Ping()
 
-
 	go peerA.StartPeerStatusChecker(time.Second * 3)
 	go peerB.StartPeerStatusChecker(time.Second * 3)
-
-
 
 	time.Sleep(1 * time.Second)
 
 	peerC.SendToPeers("YOU", ":3000")
 
-
 	// time.Sleep(time.Second * 5)
-    // peerA.UpdatePeerStatus(":4000", false)
+	// peerA.UpdatePeerStatus(":4000", false)
 
-    // Simulate a peer becoming reconnected
-    
+	// Simulate a peer becoming reconnected
 
-	
-
-
-
-	
-	
-
-	
-
-	
-
-
-
-	select{}
+	select {}
 
 }
 
@@ -201,5 +162,3 @@ func main () {
 // 		}
 // 	}
 // }
-
-

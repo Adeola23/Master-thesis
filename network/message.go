@@ -3,7 +3,7 @@ package network
 type Message struct {
 	Payload any
 	From    string
-	To 		string
+	To      string
 }
 
 type BroadcastTo struct {
@@ -13,18 +13,17 @@ type BroadcastTo struct {
 
 type MessageReady struct{}
 
-type MessageState struct{
+type MessageState struct {
 	listenAddr string
 
 	broadcastch chan BroadcastTo
-
 }
 
 func NewMessage(from string, payload any, to string) *Message {
 	return &Message{
 		From:    from,
 		Payload: payload,
-		To: to,
+		To:      to,
 	}
 }
 

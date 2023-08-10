@@ -8,8 +8,6 @@ import (
 	"gitlab.com/adeola/messaging-library/metrics"
 )
 
-
-
 func (s *Server) handleNewPeer(peer *Peer) error {
 	s.SendHandshake(peer)
 
@@ -17,51 +15,47 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	if err != nil {
 		peer.conn.Close()
 		delete(s.peers, peer.conn.RemoteAddr().String())
-		return fmt.Errorf("%s handshake with incoming peer failed: %s",s.ListenAddr, err)
-		}
+		return fmt.Errorf("%s handshake with incoming peer failed: %s", s.ListenAddr, err)
+	}
 	metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
 	go peer.readLoop(s.msgCh)
-	
+
 	logrus.WithFields(logrus.Fields{
-		"addr" : peer.conn.RemoteAddr(),
+		"addr": peer.conn.RemoteAddr(),
 	}).Info("connected")
 
 	logrus.WithFields(logrus.Fields{
-		"peer" : peer.conn.RemoteAddr(),
-		"version": hs.Version,
+		"peer":       peer.conn.RemoteAddr(),
+		"version":    hs.Version,
 		"listenAddr": peer.listenAddr,
-		"we": s.ListenAddr,
+		"we":         s.ListenAddr,
 	}).Info("handshake successfull: new peer connected")
 
 	if err := s.sendPeerList(peer); err != nil {
 		return fmt.Errorf("peerlist error : %s", err)
 	}
-	// s.peers[peer.conn.RemoteAddr()] = peer	
+	// s.peers[peer.conn.RemoteAddr()] = peer
 
 	s.AddPeer(peer)
 
 	metric.FixHandshake()
 
-	logrus.WithFields(logrus.Fields{
-		
-	}).Info(metric.String())
+	logrus.WithFields(logrus.Fields{}).Info(metric.String())
 
 	return nil
 }
 
-
-
 func (s *Server) handlePeerList(l PeerList) error {
-	   
+
 	// 	logrus.WithFields(logrus.Fields{
 	// 	"we":s.ListenAddr,
 	// 	"list": l.Peers,
 
 	// }).Info("recieved message")
-	
-	for i :=0; i < len(l.Peers); i++ {
 
-		if err := s.Connect(l.Peers[i]); err != nil{
+	for i := 0; i < len(l.Peers); i++ {
+
+		if err := s.Connect(l.Peers[i]); err != nil {
 			logrus.Errorf("failed to connect peer: %s", err)
 			continue
 		}
@@ -69,78 +63,70 @@ func (s *Server) handlePeerList(l PeerList) error {
 	return nil
 }
 
-func (s *Server)resp( msg any, addr string) {
+func (s *Server) resp(msg any, addr string) {
 	s.broadcastch <- BroadcastTo{
-		To: addr,
+		To:      addr,
 		Payload: msg,
 	}
-	
+
 }
 
-
-
-func (s *Server) handleMsg( msg any, from string, to string) error {
+func (s *Server) handleMsg(msg any, from string, to string) error {
 	metric := metrics.NewMetrics(from)
 
 	metric.FixReadDuration()
 
 	recMsg := msg
 
-	switch recMsg{
+	switch recMsg {
 	case "PING":
-		 s.resp("PONG", from)
+		s.resp("PONG", from)
 	case "PONG":
 		s.UpdatePeerStatus(from, true)
 	}
 	logrus.WithFields(logrus.Fields{
-		"sender":from,
+		"sender":  from,
 		"message": msg,
-
 	}).Info(metric.String())
 
 	return nil
-	
+
 }
 
-
-
-
-func (s *Server ) UpdatePeerStatus(addr string, connected bool) {
-	 if peer, ok := s.peers[addr]; ok {
-		 peer.connected = connected
-	 }
+func (s *Server) UpdatePeerStatus(addr string, connected bool) {
+	if peer, ok := s.peers[addr]; ok {
+		peer.connected = connected
+	}
 
 }
 
 func (s *Server) StartPeerStatusChecker(interval time.Duration) {
-    ticker := time.NewTicker(interval)
-    defer ticker.Stop()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-    for {
-        select {
-        case <-ticker.C:
-            s.checkPeerStatus()
-        }
-    }
+	for {
+		select {
+		case <-ticker.C:
+			s.checkPeerStatus()
+		}
+	}
 }
 
 func (s *Server) checkPeerStatus() {
-    for _, peer := range s.peers {
+	for _, peer := range s.peers {
 
-		if !peer.connected{
+		if !peer.connected {
 			peer.conn.Close()
 			delete(s.peers, peer.conn.RemoteAddr().String())
 			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
 		}
-       
-    }
+
+	}
 }
 
+func (s *Server) handleMessage(msg *Message) error {
+	switch v := msg.Payload.(type) {
 
-
-func (s *Server ) handleMessage(msg *Message) error{
-	switch v:=msg.Payload.(type){
-	
 	case PeerList:
 		return s.handlePeerList(v)
 	case string:
@@ -148,7 +134,5 @@ func (s *Server ) handleMessage(msg *Message) error{
 	case int:
 	}
 
-	
 	return nil
 }
-
