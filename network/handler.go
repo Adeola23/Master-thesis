@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -83,6 +84,8 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 		s.resp("PONG", from)
 	case "PONG":
 		s.UpdatePeerStatus(from, true)
+	case nil:
+		s.UpdatePeerStatus(from, false)
 	}
 	logrus.WithFields(logrus.Fields{
 		"sender":  from,
@@ -113,12 +116,44 @@ func (s *Server) StartPeerStatusChecker(interval time.Duration) {
 }
 
 func (s *Server) checkPeerStatus() {
+	retryCount := 3
+	waitTime := 10 * time.Second
 	for _, peer := range s.peers {
 
 		if !peer.connected {
 			peer.conn.Close()
 			delete(s.peers, peer.conn.RemoteAddr().String())
 			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
+
+			time.Sleep(waitTime)
+			for i := 0; i < retryCount; i++ {
+				log.Println("RETRY")
+				err := s.Connect(peer.listenAddr)
+				log.Println("RETRY22")
+
+				if err != nil {
+					logrus.Error(err)
+
+				}
+
+				if err == nil {
+
+					s.UpdatePeerStatus(peer.listenAddr, true)
+
+					//success
+					break
+				}
+
+				if i < retryCount-1 {
+					time.Sleep(waitTime)
+					fmt.Printf("Retrying in %s...\n", waitTime)
+
+				}
+
+				peer.conn.Close()
+
+			}
+
 		}
 
 	}
