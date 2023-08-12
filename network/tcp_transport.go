@@ -22,6 +22,13 @@ type Peer struct {
 	connected  bool
 }
 
+type TCPTransport struct {
+	listenAddr string
+	listener   net.Listener
+	AddPeer    chan *Peer
+	DelPeer    chan *Peer
+}
+
 func (p *Peer) Send(b []byte) error {
 	_, err := p.conn.Write(b)
 	return err
@@ -60,13 +67,6 @@ func (p *Peer) readLoop(msgch chan *Message) {
 	}
 
 	p.conn.Close()
-}
-
-type TCPTransport struct {
-	listenAddr string
-	listener   net.Listener
-	AddPeer    chan *Peer
-	DelPeer    chan *Peer
 }
 
 func NewTCPTransport(addr string) *TCPTransport {
