@@ -15,6 +15,8 @@ import (
 	"gitlab.com/adeola/messaging-library/metrics"
 )
 
+const pingInterval = 2 * time.Second
+
 type ServerConfig struct {
 	ListenAddr    string
 	Vesrison      string
@@ -25,9 +27,8 @@ type Server struct {
 	ServerConfig
 	peerLock sync.RWMutex
 
-	listener    net.Listener
-	transport   *TCPTransport
-	mu          sync.RWMutex
+	transport *TCPTransport
+
 	peers       map[string]*Peer
 	addPeer     chan *Peer
 	delPeer     chan *Peer
@@ -116,7 +117,6 @@ func (s *Server) isInPeerList(addr string) bool {
 	return false
 }
 
-// TODO
 func (s *Server) Connect(addr string) error {
 
 	if s.isInPeerList(addr) {
@@ -206,17 +206,13 @@ func (s *Server) AddPeer(p *Peer) {
 
 }
 
+// global variable for the  time
 func (s *Server) Ping() {
-	interval := 2 * time.Second
 	for {
-		// if len(s.Peers()) == 0 {
-		// 	fmt.Print(0)
-		// }
-
-		time.Sleep(interval)
+		time.Sleep(pingInterval)
 		for _, addr := range s.Peers() {
 			logrus.WithFields(logrus.Fields{}).Info("Sending PING")
-			s.SendToPeers("PING", addr)
+			s.SendToPeers(recHeart, addr)
 
 		}
 

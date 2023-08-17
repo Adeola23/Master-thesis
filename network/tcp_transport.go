@@ -16,8 +16,7 @@ func (n NetAddr) String() string  { return string(n) }
 func (n NetAddr) Network() string { return "tcp" }
 
 type Peer struct {
-	conn       net.Conn
-	info       any
+	conn net.Conn
 	listenAddr string
 	connected  bool
 }

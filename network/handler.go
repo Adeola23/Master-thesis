@@ -9,6 +9,17 @@ import (
 	"gitlab.com/adeola/messaging-library/metrics"
 )
 
+const (
+	retryCount  = 3
+	waitTime    = 10 * time.Second
+	recHeart    = "PING"
+	resHeart    = "PONG"
+	SendMessage = "HEY SERVER"
+	ResMessage  = "HI SERVER WHATS UP"
+	defaultRes  = "Unkown message"
+	nilResponse = "NIL MESSAGE SENT"
+)
+
 func (s *Server) handleNewPeer(peer *Peer) error {
 	s.SendHandshake(peer)
 
@@ -72,7 +83,95 @@ func (s *Server) resp(msg any, addr string) {
 
 }
 
+func (s *Server) handleMessage(msg *Message) error {
+	switch v := msg.Payload.(type) {
+
+	case PeerList:
+		return s.handlePeerList(v)
+	case string:
+		if msg.Payload == recHeart || msg.Payload == resHeart {
+			return s.handleHearbeat(msg.Payload, msg.From, msg.To)
+		}
+
+		if msg.Payload == SendMessage || msg.Payload == ResMessage {
+			return s.handleMsg(msg.Payload, msg.From, msg.To)
+
+		}
+		if msg.Payload == nilResponse {
+			return s.handleMsg(msg.Payload, msg.From, msg.To)
+
+		}
+		return s.handleUnkown(msg.Payload, msg.From, msg.To)
+	case nil:
+		return s.handleMsg(msg.Payload, msg.From, msg.To)
+
+	case int:
+	}
+
+	return nil
+}
+
 func (s *Server) handleMsg(msg any, from string, to string) error {
+	metric := metrics.NewMetrics(from)
+
+	metric.FixReadDuration()
+
+	// if recMsg != SendMessage {
+	// 	s.resp("")
+
+	// }
+
+	if msg == "" || msg == nil {
+		// Handle empty string or nil message
+		s.resp(nilResponse, from)
+		logrus.Errorf(nilResponse)
+	} else if msg == SendMessage {
+		s.resp(ResMessage, from)
+
+	} else {
+		s.resp(defaultRes, from)
+		logrus.Errorf(defaultRes)
+
+	}
+
+	// switch recMsg {
+
+	// case SendMessage:
+
+	// case defaultRes:
+	// 	s.resp(ResMessage, from)
+	// default:
+
+	// }
+
+	logrus.WithFields(logrus.Fields{
+		"sender":   from,
+		"message":  msg,
+		"receiver": to,
+	}).Info(metric.String())
+
+	return nil
+
+}
+func (s *Server) handleUnkown(msg any, from string, to string) error {
+	metric := metrics.NewMetrics(from)
+
+	metric.FixReadDuration()
+	time.Sleep(waitTime)
+	for i := 0; i < retryCount; i++ {
+		s.resp(defaultRes, from)
+	}
+	logrus.WithFields(logrus.Fields{
+		"sender":   from,
+		"message":  msg,
+		"receiver": to,
+	}).Info(metric.String())
+
+	return nil
+
+}
+
+func (s *Server) handleHearbeat(msg any, from string, to string) error {
 	metric := metrics.NewMetrics(from)
 
 	metric.FixReadDuration()
@@ -80,16 +179,17 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 	recMsg := msg
 
 	switch recMsg {
-	case "PING":
-		s.resp("PONG", from)
-	case "PONG":
+	case recHeart:
+		s.resp(resHeart, from)
+	case resHeart:
 		s.UpdatePeerStatus(from, true)
 	case nil:
 		s.UpdatePeerStatus(from, false)
 	}
 	logrus.WithFields(logrus.Fields{
-		"sender":  from,
-		"message": msg,
+		"sender":   from,
+		"message":  msg,
+		"receiver": to,
 	}).Info(metric.String())
 
 	return nil
@@ -116,31 +216,26 @@ func (s *Server) StartPeerStatusChecker(interval time.Duration) {
 }
 
 func (s *Server) checkPeerStatus() {
-	retryCount := 3
-	waitTime := 10 * time.Second
 	for _, peer := range s.peers {
 
 		if !peer.connected {
-			peer.conn.Close()
-			delete(s.peers, peer.conn.RemoteAddr().String())
-			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
+			// peer.conn.Close()
+			// delete(s.peers, peer.conn.RemoteAddr().String())
+			// logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
 
 			time.Sleep(waitTime)
 			for i := 0; i < retryCount; i++ {
-				log.Println("RETRY")
+
 				err := s.Connect(peer.listenAddr)
-				log.Println("RETRY22")
 
 				if err != nil {
 					logrus.Error(err)
-
 				}
 
 				if err == nil {
-
-					s.UpdatePeerStatus(peer.listenAddr, true)
-
 					//success
+					s.UpdatePeerStatus(peer.listenAddr, true)
+					log.Println("CONNECTED")
 					break
 				}
 
@@ -150,24 +245,9 @@ func (s *Server) checkPeerStatus() {
 
 				}
 
-				peer.conn.Close()
-
 			}
 
 		}
 
 	}
-}
-
-func (s *Server) handleMessage(msg *Message) error {
-	switch v := msg.Payload.(type) {
-
-	case PeerList:
-		return s.handlePeerList(v)
-	case string:
-		return s.handleMsg(msg.Payload, msg.From, msg.To)
-	case int:
-	}
-
-	return nil
 }

@@ -4,13 +4,13 @@ import (
 	_ "encoding/gob"
 	_ "fmt"
 	"log"
+	_ "log"
 	_ "net"
 
 	"time"
 
 	_ "github.com/sirupsen/logrus"
 	"gitlab.com/adeola/messaging-library/network"
-
 )
 
 func makeServerAndStart(addr, apiddr string) *network.Server {
@@ -70,14 +70,16 @@ func main() {
 
 	time.Sleep(1 * time.Second)
 
-	peerC.SendToPeers("YOU", ":4000")
+	peerC.SendToPeers(network.SendMessage, ":4000")
 
 	// to1 := []string{":4500"}
 	// //to1 := []string{":4500"}
 
 	time.Sleep(1 * time.Second)
 
-	peerA.SendToPeers("YOU", ":4300")
+	peerA.SendToPeers(nil, ":4300")
+
+	peerA.SendToPeers("you", ":4500")
 
 	// to2 := []string{":3000"}
 	// //to1 := []string{":4500"}
@@ -125,20 +127,16 @@ func main() {
 	// }
 
 	go peerA.Ping()
-	go peerB.Ping()
+	// go peerB.Ping()
 	// go peerC.Ping()
 	// go peerD.Ping()
 
 	go peerA.StartPeerStatusChecker(time.Second * 3)
 	go peerB.StartPeerStatusChecker(time.Second * 3)
 
-	
-
 	time.Sleep(time.Second * 5)
 	log.Println("DISCONNNECTED")
 	peerA.UpdatePeerStatus(":4000", false)
-
-
 
 	// Simulate a peer becoming reconnected
 
