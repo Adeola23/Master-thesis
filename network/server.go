@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+
 	_ "reflect"
 
 	"time"
@@ -15,7 +16,7 @@ import (
 	"gitlab.com/adeola/messaging-library/metrics"
 )
 
-const pingInterval = 2 * time.Second
+const pingInterval = 7 * time.Second
 
 type ServerConfig struct {
 	ListenAddr    string
@@ -55,8 +56,8 @@ func NewServer(cfg ServerConfig) *Server {
 		peers:        make(map[string]*Peer),
 		addPeer:      make(chan *Peer, 20),
 		delPeer:      make(chan *Peer),
-		msgCh:        make(chan *Message, 100),
-		broadcastch:  make(chan BroadcastTo, 100),
+		msgCh:        make(chan *Message, 500),
+		broadcastch:  make(chan BroadcastTo, 500),
 	}
 
 	// s.metrics := newMetrics(cfg.ListenAddr)
@@ -167,6 +168,7 @@ func (s *Server) loop() {
 
 			go func() {
 				if err := s.Broadcast(msg); err != nil {
+
 					logrus.Errorf("broadcast error: %s", err)
 				}
 
@@ -211,7 +213,7 @@ func (s *Server) Ping() {
 	for {
 		time.Sleep(pingInterval)
 		for _, addr := range s.Peers() {
-			logrus.WithFields(logrus.Fields{}).Info("Sending PING")
+			logrus.WithFields(logrus.Fields{}).Info("PING" + addr)
 			s.SendToPeers(recHeart, addr)
 
 		}
@@ -282,10 +284,12 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 
 			metric.FixWriteDuration()
 
-			logrus.WithFields(logrus.Fields{}).Info(metric.String())
-
 			if err := peer.Send(buf.Bytes()); err != nil {
 				logrus.Errorf("broadcast to peer error: %s", err)
+			}
+			if ShowLogs {
+				logrus.WithFields(logrus.Fields{}).Info(metric.String())
+
 			}
 
 		}(peer)

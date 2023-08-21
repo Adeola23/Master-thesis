@@ -10,15 +10,19 @@ import (
 )
 
 const (
-	retryCount  = 3
-	waitTime    = 10 * time.Second
-	recHeart    = "PING"
-	resHeart    = "PONG"
-	SendMessage = "HEY SERVER"
-	ResMessage  = "HI SERVER WHATS UP"
-	defaultRes  = "Unkown message"
-	nilResponse = "NIL MESSAGE SENT"
+	retryCount         = 3
+	waitTime           = 10 * time.Second
+	recHeart    string = "PING"
+	resHeart    string = "PONG"
+	SendMessage string = "HEY SERVER"
+	ResMessage  string = "HI SERVER WHATS UP"
+	defaultRes  string = "Unkown message"
+	nilResponse string = "NIL MESSAGE SENT"
 )
+
+var TopologyInstance Topology
+
+var ShowLogs = true
 
 func (s *Server) handleNewPeer(peer *Peer) error {
 	s.SendHandshake(peer)
@@ -32,27 +36,37 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 	metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
 	go peer.readLoop(s.msgCh)
 
-	logrus.WithFields(logrus.Fields{
-		"addr": peer.conn.RemoteAddr(),
-	}).Info("connected")
+	if ShowLogs {
+		logrus.WithFields(logrus.Fields{
+			"addr": peer.conn.RemoteAddr(),
+		}).Info("connected")
 
-	logrus.WithFields(logrus.Fields{
-		"peer":       peer.conn.RemoteAddr(),
-		"version":    hs.Version,
-		"listenAddr": peer.listenAddr,
-		"we":         s.ListenAddr,
-	}).Info("handshake successfull: new peer connected")
+		logrus.WithFields(logrus.Fields{
+			"peer":       peer.conn.RemoteAddr(),
+			"version":    hs.Version,
+			"listenAddr": peer.listenAddr,
+			"we":         s.ListenAddr,
+		}).Info("handshake successfull: new peer connected")
 
-	if err := s.sendPeerList(peer); err != nil {
-		return fmt.Errorf("peerlist error : %s", err)
 	}
+
+	if TopologyInstance.Structured {
+		if err := s.sendPeerList(peer); err != nil {
+			return fmt.Errorf("peerlist error : %s", err)
+		}
+
+	}
+
 	// s.peers[peer.conn.RemoteAddr()] = peer
 
 	s.AddPeer(peer)
 
 	metric.FixHandshake()
 
-	logrus.WithFields(logrus.Fields{}).Info(metric.String())
+	if ShowLogs {
+		logrus.WithFields(logrus.Fields{}).Info(metric.String())
+
+	}
 
 	return nil
 }
@@ -91,17 +105,18 @@ func (s *Server) handleMessage(msg *Message) error {
 	case string:
 		if msg.Payload == recHeart || msg.Payload == resHeart {
 			return s.handleHearbeat(msg.Payload, msg.From, msg.To)
-		}
-
-		if msg.Payload == SendMessage || msg.Payload == ResMessage {
+		} else if msg.Payload == SendMessage || msg.Payload == ResMessage {
 			return s.handleMsg(msg.Payload, msg.From, msg.To)
 
-		}
-		if msg.Payload == nilResponse {
+		} else if msg.Payload == nilResponse {
 			return s.handleMsg(msg.Payload, msg.From, msg.To)
 
+		} else {
+			log.Println(msg.Payload)
+			// return s.handleUnkown(msg.Payload, msg.From, msg.To)
+
 		}
-		return s.handleUnkown(msg.Payload, msg.From, msg.To)
+
 	case nil:
 		return s.handleMsg(msg.Payload, msg.From, msg.To)
 
@@ -120,6 +135,7 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 	// 	s.resp("")
 
 	// }
+	log.Print(msg)
 
 	if msg == "" || msg == nil {
 		// Handle empty string or nil message
@@ -128,9 +144,9 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 	} else if msg == SendMessage {
 		s.resp(ResMessage, from)
 
-	} else {
+	} else if msg != ResMessage {
 		s.resp(defaultRes, from)
-		logrus.Errorf(defaultRes)
+		log.Println(msg)
 
 	}
 
@@ -144,32 +160,39 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 
 	// }
 
-	logrus.WithFields(logrus.Fields{
-		"sender":   from,
-		"message":  msg,
-		"receiver": to,
-	}).Info(metric.String())
+	if ShowLogs {
+		logrus.WithFields(logrus.Fields{
+			"sender":   from,
+			"message":  msg,
+			"receiver": to,
+		}).Info(metric.String())
 
-	return nil
-
-}
-func (s *Server) handleUnkown(msg any, from string, to string) error {
-	metric := metrics.NewMetrics(from)
-
-	metric.FixReadDuration()
-	time.Sleep(waitTime)
-	for i := 0; i < retryCount; i++ {
-		s.resp(defaultRes, from)
 	}
-	logrus.WithFields(logrus.Fields{
-		"sender":   from,
-		"message":  msg,
-		"receiver": to,
-	}).Info(metric.String())
 
 	return nil
 
 }
+// func (s *Server) handleUnkown(msg any, from string, to string) error {
+// 	metric := metrics.NewMetrics(from)
+
+// 	metric.FixReadDuration()
+// 	time.Sleep(waitTime)
+// 	for i := 0; i < retryCount; i++ {
+// 		s.resp(defaultRes, from)
+// 	}
+
+// 	if ShowLogs {
+// 		logrus.WithFields(logrus.Fields{
+// 			"sender":   from,
+// 			"message":  msg,
+// 			"receiver": to,
+// 		}).Info(metric.String())
+
+// 	}
+
+// 	return nil
+
+// }
 
 func (s *Server) handleHearbeat(msg any, from string, to string) error {
 	metric := metrics.NewMetrics(from)
@@ -181,16 +204,27 @@ func (s *Server) handleHearbeat(msg any, from string, to string) error {
 	switch recMsg {
 	case recHeart:
 		s.resp(resHeart, from)
+		logrus.WithFields(logrus.Fields{}).Info("PONG" + from)
+		if ShowLogs {
+			logrus.WithFields(logrus.Fields{
+				"sender":   from,
+				"message":  recHeart,
+				"receiver": to,
+			}).Info(metric.String())
+
+		}
 	case resHeart:
+		if ShowLogs {
+			logrus.WithFields(logrus.Fields{
+				"status":  "Alive",
+				"Node": to,
+			}).Info(metric.String())
+
+		}
 		s.UpdatePeerStatus(from, true)
 	case nil:
 		s.UpdatePeerStatus(from, false)
 	}
-	logrus.WithFields(logrus.Fields{
-		"sender":   from,
-		"message":  msg,
-		"receiver": to,
-	}).Info(metric.String())
 
 	return nil
 
@@ -220,10 +254,9 @@ func (s *Server) checkPeerStatus() {
 
 		if !peer.connected {
 			// peer.conn.Close()
-			// delete(s.peers, peer.conn.RemoteAddr().String())
-			// logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
+			delete(s.peers, peer.conn.RemoteAddr().String())
+			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
 
-			time.Sleep(waitTime)
 			for i := 0; i < retryCount; i++ {
 
 				err := s.Connect(peer.listenAddr)

@@ -13,6 +13,8 @@ import (
 	"gitlab.com/adeola/messaging-library/network"
 )
 
+
+
 func makeServerAndStart(addr, apiddr string) *network.Server {
 	cfg := network.ServerConfig{
 		ListenAddr:    addr,
@@ -29,10 +31,13 @@ func makeServerAndStart(addr, apiddr string) *network.Server {
 }
 
 func main() {
+	network.TopologyInstance = network.InitializeTopology(true)
+	network.ShowLogs = false
+	
 	peerA := makeServerAndStart(":3000", ":3001")
 	peerB := makeServerAndStart(":4000", ":4001")
 	peerC := makeServerAndStart(":4300", ":4301")
-	peerD := makeServerAndStart(":4500", ":4501")
+	// peerD := makeServerAndStart(":4500", ":4501")
 	// peerE  := makeServerAndStart(":3000")
 	// peerF := makeServerAndStart(":4200")
 	// peerG := makeServerAndStart(":4100")
@@ -42,13 +47,18 @@ func main() {
 	// peerK := makeServerAndStart(":4600")
 	// peerL := makeServerAndStart(":4800")
 
+	
+
 	time.Sleep(1 * time.Second)
 
 	peerB.Connect(peerA.ListenAddr)
 
 	time.Sleep(1 * time.Second)
 
-	peerA.Connect(peerD.ListenAddr)
+	peerA.Connect(peerC.ListenAddr)
+
+    
+
 
 	// time.Sleep(1 * time.Second)
 
@@ -61,25 +71,50 @@ func main() {
 
 	// time.Sleep(1 * time.Second)
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
-	peerC.Connect(peerB.ListenAddr)
+	// peerC.Connect(peerB.ListenAddr)
 
 	// to := []string{":4000"}
 	//to1 := []string{":4500"}
 
-	time.Sleep(1 * time.Second)
+	// handles 9000 for a period and further breaks connection
+	// messageRate := 1000 // messages per second
+	// limiter := time.Tick(time.Second / time.Duration(messageRate))
 
-	peerC.SendToPeers(network.SendMessage, ":4000")
+	// for {
+	// 	select {
+	// 	case <-limiter:
+	// 		peerC.SendToPeers(network.SendMessage, ":4000")
+
+	// 	}
+	// }
+
+	// totalMessages := 2
+
+	// // Establish connection and initialize sender
+	time.Sleep(1 * time.Second)
+	peerC.SendToPeers(network.SendMessage, ":3000")
+
+	// start := time.Now()
+
+	// for i := 0; i < totalMessages; i++ {
+
+	// 	// Send message of messageSize
+	// }
+	// elapsed := time.Since(start)
+
+	// throughput := float64(totalMessages) / elapsed.Seconds()
+	// fmt.Printf("Throughput: %.2f messages/second\n", throughput)
 
 	// to1 := []string{":4500"}
 	// //to1 := []string{":4500"}
 
 	time.Sleep(1 * time.Second)
 
-	peerA.SendToPeers(nil, ":4300")
+	// peerA.SendToPeers(nil, ":4300")
 
-	peerA.SendToPeers("you", ":4500")
+	// peerA.SendToPeers("you", ":4500")
 
 	// to2 := []string{":3000"}
 	// //to1 := []string{":4500"}
@@ -126,17 +161,20 @@ func main() {
 
 	// }
 
-	go peerA.Ping()
+	// go peerA.Ping()
 	// go peerB.Ping()
-	// go peerC.Ping()
+	go peerC.Ping()
 	// go peerD.Ping()
 
-	go peerA.StartPeerStatusChecker(time.Second * 3)
-	go peerB.StartPeerStatusChecker(time.Second * 3)
 
-	time.Sleep(time.Second * 5)
-	log.Println("DISCONNNECTED")
-	peerA.UpdatePeerStatus(":4000", false)
+    time.Sleep(5 * time.Second)
+	go peerA.StartPeerStatusChecker(time.Second * 3)
+	log.Print("DONE")
+	//go peerB.StartPeerStatusChecker(time.Second * 3)
+
+	// time.Sleep(time.Second * 5)
+	// peerA.UpdatePeerStatus(":4000", false)
+	// log.Println("DISCONNNECTED")
 
 	// Simulate a peer becoming reconnected
 
