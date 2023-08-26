@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"log"
+
+	_ "log"
 
 	_ "reflect"
 
@@ -16,12 +19,13 @@ import (
 	"gitlab.com/adeola/messaging-library/metrics"
 )
 
-const pingInterval = 7 * time.Second
+const pingInterval = 5 * time.Second
+
+var wg sync.WaitGroup
 
 type ServerConfig struct {
 	ListenAddr    string
 	Vesrison      string
-	APIlistenAddr string
 }
 
 type Server struct {
@@ -60,21 +64,10 @@ func NewServer(cfg ServerConfig) *Server {
 		broadcastch:  make(chan BroadcastTo, 500),
 	}
 
-	// s.metrics := newMetrics(cfg.ListenAddr)
 	tr := NewTCPTransport(s.ListenAddr)
 	s.transport = tr
 	tr.AddPeer = s.addPeer
 	tr.DelPeer = s.addPeer
-
-	// go func(s *Server){
-	// 	apiServer := NewAPIServer(cfg.APIlistenAddr)
-
-	// 	logrus.WithFields(logrus.Fields{
-	// 		"listenAddr": cfg.APIlistenAddr,
-	// 	}).Info("starting API server")
-	// 	apiServer.Run()
-
-	// }(s)
 
 	return s
 }
@@ -100,9 +93,12 @@ func (s *Server) SendHandshake(p *Peer) error {
 
 	buf := new(bytes.Buffer)
 	if err := gob.NewEncoder(buf).Encode(hs); err != nil {
+		log.Println("sendhand", err)
 		return err
 
 	}
+
+	log.Println("bufff", buf)
 
 	return p.Send(buf.Bytes())
 
@@ -130,20 +126,12 @@ func (s *Server) Connect(addr string) error {
 		return err
 	}
 
-	// if err1 != nil {
-	// 	return err
-	// }
 	peer := &Peer{
-		conn: conn,
+		conn:   conn,
+		status: true,
 	}
 
-	// peer1 := &Peer {
-	// 		conn: conn1,
-	// 	}
-	// fmt.Print(peer1)
-
 	s.addPeer <- peer
-	// peer.Send([] byte("Vesrison 1"))
 
 	return nil
 }
@@ -165,6 +153,8 @@ func (s *Server) loop() {
 	for {
 		select {
 		case msg := <-s.broadcastch:
+
+			// log.Println("mssssss", msg)
 
 			go func() {
 				if err := s.Broadcast(msg); err != nil {
@@ -205,6 +195,7 @@ func (s *Server) AddPeer(p *Peer) {
 	defer s.peerLock.Unlock()
 
 	s.peers[p.listenAddr] = p
+	p.status = true
 
 }
 
@@ -267,19 +258,24 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	// fmt.Print(msg)
 
 	buf := new(bytes.Buffer)
+
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
 		return err
 	}
 	peer, ok := s.peers[broadcastMsg.To]
 
+	// log.Println(ok)
+
 	// fmt.Print(peer)
 
 	//Buffering the message when nodes are not connected.
 
+	log.Println("helppppp")
+
 	if ok {
+		// log.Print(peer.status, peer.listenAddr, "broad")
 
 		go func(peer *Peer) {
-
 			metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
 
 			metric.FixWriteDuration()
@@ -287,12 +283,18 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 			if err := peer.Send(buf.Bytes()); err != nil {
 				logrus.Errorf("broadcast to peer error: %s", err)
 			}
+
 			if ShowLogs {
 				logrus.WithFields(logrus.Fields{}).Info(metric.String())
 
 			}
-
 		}(peer)
+
+		// if peer.status  {
+
+		// } else {
+		// 	logrus.Warnf("trying to ping disconnected peer %s", peer.listenAddr)
+		// }
 
 	}
 
@@ -300,6 +302,8 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 }
 
 func (s *Server) SendToPeers(payload any, addr string) {
+
+	// log.Print("cheeeee", payload, addr)
 
 	s.broadcastch <- BroadcastTo{
 		To:      addr,
@@ -311,8 +315,11 @@ func (s *Server) SendToPeers(payload any, addr string) {
 func (s *Server) handShake(p *Peer) (*Handshake, error) {
 	hs := &Handshake{}
 	if err := gob.NewDecoder(p.conn).Decode(hs); err != nil {
+		// log.Println("hand", err)
 		return nil, err
 	}
+
+	log.Print(hs)
 
 	if s.Vesrison != hs.Version {
 		return nil, fmt.Errorf("peer version not match %s", hs.Version)
@@ -321,6 +328,7 @@ func (s *Server) handShake(p *Peer) (*Handshake, error) {
 	p.listenAddr = hs.ListenAddr
 
 	return hs, nil
+
 }
 
 func init() {

@@ -5,7 +5,9 @@ import (
 	"encoding/gob"
 	"fmt"
 	_ "io"
+	_ "log"
 	"net"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -16,9 +18,10 @@ func (n NetAddr) String() string  { return string(n) }
 func (n NetAddr) Network() string { return "tcp" }
 
 type Peer struct {
-	conn net.Conn
-	listenAddr string
-	connected  bool
+	conn         net.Conn
+	listenAddr   string
+	status    bool
+	LastPingTime time.Time
 }
 
 type TCPTransport struct {
@@ -30,8 +33,44 @@ type TCPTransport struct {
 
 func (p *Peer) Send(b []byte) error {
 	_, err := p.conn.Write(b)
-	return err
 
+	if err != nil {
+		return err
+	}
+
+	// response := make([]byte, 1024) // Adjust the buffer size as needed
+	// n, err := p.conn.Read(response)
+
+	// if err != nil {
+	// 	return err
+	// }
+	// log.Print(string(response[:n]))
+
+	return nil
+
+}
+
+// func (p *Peer) SendPing(b []byte) (string, error) {
+// 	_, err := p.conn.Write(b)
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	response := make([]byte, 1024) // Adjust the buffer size as needed
+// 	n, err := p.conn.Read(response)
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	return string(response[:n]), nil
+
+// }
+
+func (p *Peer) Rec(b []byte) error {
+	_, err := p.conn.Read(b)
+	return err
 }
 
 /*
@@ -42,10 +81,6 @@ The reading process runs in an infinite loop until an error occurs, at which poi
 func (p *Peer) readLoop(msgch chan *Message) {
 	// buf := make([]byte, 1024)
 	for {
-		// n, err := p.conn.Read(buf)
-		// if err != nil {
-		// 	break
-		// }
 
 		msg := new(Message)
 
@@ -56,16 +91,9 @@ func (p *Peer) readLoop(msgch chan *Message) {
 
 		msgch <- msg
 
-		// msgch <- &Message{
-		// 	From: p.conn.RemoteAddr(),
-		// 	Payload: bytes.NewReader(buf[:n]),
-		// }
-
-		// fmt.Println(string(buf[:n]))
-
 	}
 
-	p.conn.Close()
+	
 }
 
 func NewTCPTransport(addr string) *TCPTransport {

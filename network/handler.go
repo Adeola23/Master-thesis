@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"log"
+	"net"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,7 +12,7 @@ import (
 
 const (
 	retryCount         = 3
-	waitTime           = 10 * time.Second
+	waitTime           = 2 * time.Second
 	recHeart    string = "PING"
 	resHeart    string = "PONG"
 	SendMessage string = "HEY SERVER"
@@ -103,6 +104,7 @@ func (s *Server) handleMessage(msg *Message) error {
 	case PeerList:
 		return s.handlePeerList(v)
 	case string:
+
 		if msg.Payload == recHeart || msg.Payload == resHeart {
 			return s.handleHearbeat(msg.Payload, msg.From, msg.To)
 		} else if msg.Payload == SendMessage || msg.Payload == ResMessage {
@@ -113,7 +115,7 @@ func (s *Server) handleMessage(msg *Message) error {
 
 		} else {
 			log.Println(msg.Payload)
-			// return s.handleUnkown(msg.Payload, msg.From, msg.To)
+			return s.handleUnkown(msg.Payload, msg.From, msg.To)
 
 		}
 
@@ -131,12 +133,6 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 
 	metric.FixReadDuration()
 
-	// if recMsg != SendMessage {
-	// 	s.resp("")
-
-	// }
-	log.Print(msg)
-
 	if msg == "" || msg == nil {
 		// Handle empty string or nil message
 		s.resp(nilResponse, from)
@@ -150,16 +146,6 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 
 	}
 
-	// switch recMsg {
-
-	// case SendMessage:
-
-	// case defaultRes:
-	// 	s.resp(ResMessage, from)
-	// default:
-
-	// }
-
 	if ShowLogs {
 		logrus.WithFields(logrus.Fields{
 			"sender":   from,
@@ -172,27 +158,42 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 	return nil
 
 }
-// func (s *Server) handleUnkown(msg any, from string, to string) error {
-// 	metric := metrics.NewMetrics(from)
 
-// 	metric.FixReadDuration()
-// 	time.Sleep(waitTime)
-// 	for i := 0; i < retryCount; i++ {
-// 		s.resp(defaultRes, from)
-// 	}
+func (s *Server) handleUnkown(msg any, from string, to string) error {
+	metric := metrics.NewMetrics(from)
 
-// 	if ShowLogs {
-// 		logrus.WithFields(logrus.Fields{
-// 			"sender":   from,
-// 			"message":  msg,
-// 			"receiver": to,
-// 		}).Info(metric.String())
+	if msg == defaultRes {
+		if ShowLogs {
+			logrus.WithFields(logrus.Fields{
+				"sender":   from,
+				"message":  msg,
+				"receiver": to,
+			}).Info(metric.String())
 
-// 	}
+		}
 
-// 	return nil
+	} else {
+		metric.FixReadDuration()
+		time.Sleep(waitTime)
+		for i := 0; i < retryCount; i++ {
+			s.resp(defaultRes, from)
+			logrus.Warnf("Unknow message is sent from %s to %s", from, to)
+		}
 
-// }
+		if ShowLogs {
+			logrus.WithFields(logrus.Fields{
+				"sender":   from,
+				"message":  msg,
+				"receiver": to,
+			}).Info(metric.String())
+
+		}
+
+	}
+
+	return nil
+
+}
 
 func (s *Server) handleHearbeat(msg any, from string, to string) error {
 	metric := metrics.NewMetrics(from)
@@ -203,7 +204,7 @@ func (s *Server) handleHearbeat(msg any, from string, to string) error {
 
 	switch recMsg {
 	case recHeart:
-		s.resp(resHeart, from)
+		s.SendToPeers(resHeart, from)
 		logrus.WithFields(logrus.Fields{}).Info("PONG" + from)
 		if ShowLogs {
 			logrus.WithFields(logrus.Fields{
@@ -214,52 +215,52 @@ func (s *Server) handleHearbeat(msg any, from string, to string) error {
 
 		}
 	case resHeart:
+
 		if ShowLogs {
 			logrus.WithFields(logrus.Fields{
-				"status":  "Alive",
-				"Node": to,
+				"status": "Alive",
+				"Node":   to,
 			}).Info(metric.String())
 
 		}
-		s.UpdatePeerStatus(from, true)
-	case nil:
-		s.UpdatePeerStatus(from, false)
-	}
+		s.UpdatePeerStatus(from)
 
+	}
 	return nil
-
 }
 
-func (s *Server) UpdatePeerStatus(addr string, connected bool) {
+func (s *Server) UpdatePeerStatus(addr string) {
+
 	if peer, ok := s.peers[addr]; ok {
-		peer.connected = connected
+		peer.LastPingTime = time.Now()
+
 	}
 
 }
 
-func (s *Server) StartPeerStatusChecker(interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func (s *Server) IsPeerResponsive() {
 
-	for {
-		select {
-		case <-ticker.C:
-			s.checkPeerStatus()
-		}
-	}
-}
-
-func (s *Server) checkPeerStatus() {
 	for _, peer := range s.peers {
+		// log.Println("After update check:", peer.LastPingTime)
+		elapsedTime := time.Since(peer.LastPingTime)
+		comparisonResult := elapsedTime <= pingInterval*2
+		if comparisonResult {
+			peer.status = true
+			log.Println(peer.status, peer.listenAddr, peer.LastPingTime, "compa")
+		} else {
+			peer.status = false
 
-		if !peer.connected {
-			// peer.conn.Close()
-			delete(s.peers, peer.conn.RemoteAddr().String())
-			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
+		}
+		log.Print(comparisonResult, peer.listenAddr, "check")
+		if peer.conn == nil {
+			logrus.WithFields(logrus.Fields{
+				"source": s.ListenAddr,
+			}).Warn("Peer " + peer.listenAddr + " is unresponsive")
 
+			time.Sleep(time.Second * 10)
 			for i := 0; i < retryCount; i++ {
 
-				err := s.Connect(peer.listenAddr)
+				err := s.ReconnectPeer(peer)
 
 				if err != nil {
 					logrus.Error(err)
@@ -267,7 +268,10 @@ func (s *Server) checkPeerStatus() {
 
 				if err == nil {
 					//success
-					s.UpdatePeerStatus(peer.listenAddr, true)
+					// s.UpdatePeerStatus(peer.listenAddr)
+					peer.LastPingTime = time.Now()
+					peer.status = true
+					s.PingPeer(peer.listenAddr)
 					log.Println("CONNECTED")
 					break
 				}
@@ -279,8 +283,143 @@ func (s *Server) checkPeerStatus() {
 				}
 
 			}
+			if comparisonResult {
+				break
+				panic("jsbdjsb")
+
+			}
 
 		}
 
 	}
+
 }
+
+func (s *Server) PingPeer(addr string) error {
+
+	if peer, ok := s.peers[addr]; ok {
+		pingMessage := "PING"
+		_, err := peer.conn.Write([]byte(pingMessage))
+		if err != nil {
+			return err
+		}
+
+		// Set a timeout for waiting for a ping response
+		responseDeadline := time.Now().Add(2 * time.Second)
+		peer.conn.SetReadDeadline(responseDeadline)
+
+		// Attempt to read the response
+		response := make([]byte, len(pingMessage))
+		_, err = peer.conn.Read(response)
+		if err != nil {
+			// Handle the error, such as connection timeout or closed connection
+			return err
+		}
+
+		// Response received, update the peer's status
+		peer.status = true
+
+	}
+	// Send a ping to the peer
+
+	return nil
+}
+
+func (s *Server) ReconnectPeer(peer *Peer) error {
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	//  err := peer.conn.Close() // Close the existing connection
+
+	// log.Println(err, "errrrr")
+	// if err != nil {
+	// 	return err
+	// }
+
+	// Attempt to establish a new connection
+	newConn, err := net.DialTimeout("tcp", peer.listenAddr, 1*time.Second)
+	if err != nil {
+		return err
+	}
+
+	// Update the peer's connection status and connection object
+	peer.conn = newConn
+	peer.status = true
+
+	log.Println(newConn)
+
+	// Perform any necessary post-connection setup
+
+	return nil
+}
+
+func (s *Server) Disconnect(addr string) error {
+	p, ok := s.peers[addr]
+	if !ok {
+		return fmt.Errorf("%v failed to disconnect: unknown peer: %v", s.ListenAddr, addr)
+	}
+
+	if ok {
+		err := p.conn.Close()
+
+		if err != nil {
+			return fmt.Errorf("%v failed to disconnect: %v", addr, err)
+
+		} else {
+
+			p.conn = nil
+
+			log.Println("Connection closed successfully")
+		}
+	}
+
+	return nil
+}
+
+func (s *Server) StartPeerStatusChecker(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.IsPeerResponsive()
+		}
+	}
+}
+
+// func (s *Server) checkPeerStatus() {
+// 	for _, peer := range s.peers {
+
+// 		if !peer.connected {
+// 			// peer.conn.Close()
+// 			delete(s.peers, peer.conn.RemoteAddr().String())
+// 			logrus.Errorf("peer %s disconnected and deleted from : %s", peer.listenAddr, s.ListenAddr)
+
+// 			for i := 0; i < retryCount; i++ {
+
+// 				err := s.Connect(peer.listenAddr)
+
+// 				if err != nil {
+// 					logrus.Error(err)
+// 				}
+
+// 				if err == nil {
+// 					//success
+// 					// s.UpdatePeerStatus(peer.listenAddr)
+// 					log.Println("CONNECTED")
+// 					break
+// 				}
+
+// 				if i < retryCount-1 {
+// 					time.Sleep(waitTime)
+// 					fmt.Printf("Retrying in %s...\n", waitTime)
+
+// 				}
+
+// 			}
+
+// 		}
+
+// 	}
+// }
