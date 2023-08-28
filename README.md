@@ -36,10 +36,16 @@ func main() {
 ## Functionalities
 
 -- Gossip Engine: Facilitates efficient distribution of messages within a network.
+
 -- Messaging: Send and receive messages between nodes in the network.
+
 -- Heartbeat: Keep track of node availability with heartbeat signals.
+
 -- TCP Protocol: Communicate using the TCP protocol for reliability.
+
 -- Handshake: Establish connections with a handshake mechanism.
+
 -- Logging: turn logs on/off.
+
 -- Message Serialization/Deserialization: Messages are automatically serialized and deserialized.
 
