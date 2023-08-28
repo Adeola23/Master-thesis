@@ -3,6 +3,7 @@ package main
 import (
 	_ "encoding/gob"
 	_ "fmt"
+	"log"
 
 	_ "log"
 	_ "net"
@@ -16,7 +17,7 @@ import (
 func makeServerAndStart(addr string) *network.Server {
 	cfg := network.ServerConfig{
 		ListenAddr: addr,
-		Vesrison: "two",
+		Vesrison:   "two",
 	}
 	server := network.NewServer(cfg)
 	time.Sleep(1 * time.Second)
@@ -28,7 +29,7 @@ func makeServerAndStart(addr string) *network.Server {
 }
 
 func main() {
-	network.TopologyInstance = network.InitializeTopology(false)
+	network.TopologyInstance = network.InitializeTopology(true)
 	network.ShowLogs = false
 
 	peerA := makeServerAndStart(":3000")
@@ -48,9 +49,9 @@ func main() {
 
 	peerB.Connect(peerA.ListenAddr)
 
-	// time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 
-	// peerA.Connect(peerC.ListenAddr)
+	peerA.Connect(peerC.ListenAddr)
 
 	// time.Sleep(1 * time.Second)
 
@@ -75,8 +76,6 @@ func main() {
 	// time.Sleep(1 * time.Second)
 
 	// peerL.Connect(peerC.ListenAddr)
-
-
 
 	// handles 9000 for a period and further breaks connection
 	// messageRate := 1000 // messages per second
@@ -107,8 +106,6 @@ func main() {
 	// throughput := float64(totalMessages) / elapsed.Seconds()
 	// fmt.Printf("Throughput: %.2f messages/second\n", throughput)
 
-	
-
 	// msg := new(network.Message)
 
 	//  time.Sleep(1 * time.Second)
@@ -131,19 +128,30 @@ func main() {
 	time.Sleep(5 * time.Second)
 	// go peerC.StartPeerStatusChecker(time.Second * 5)
 	// go peerB.StartPeerStatusChecker(time.Second * 5)
-	// go peerA.StartPeerStatusChecker(time.Second * 5)
+	go peerA.StartPeerStatusChecker(time.Second * 5)
 	// log.Print("DONE")
 	//go peerB.StartPeerStatusChecker(time.Second * 3)
 
 	// time.Sleep(time.Second * 7)
-	// peerC.Disconnect(":3000")
+	// peerA.Disconnect(":4000")
 	// peerA.Disconnect(":4300")
 
 	// log.Println("DISCONNNECTED")
+
+	time.Sleep(7 * time.Second)
+	peerA.UpdatePeerStatus(":4000", false)
+
+	// time.Sleep(15 * time.Second)
+
+	// peerA.Connect(peerB.ListenAddr)
+
+	log.Println("DISCONNNECTED")
+
+	time.Sleep(20 * time.Second)
+	peerB.SendToPeers(network.SendMessage, ":3000")
 
 	// Simulate a peer becoming reconnected
 
 	select {}
 
 }
-

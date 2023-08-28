@@ -21,11 +21,9 @@ import (
 
 const pingInterval = 5 * time.Second
 
-var wg sync.WaitGroup
-
 type ServerConfig struct {
-	ListenAddr    string
-	Vesrison      string
+	ListenAddr string
+	Vesrison   string
 }
 
 type Server struct {
@@ -34,11 +32,12 @@ type Server struct {
 
 	transport *TCPTransport
 
-	peers       map[string]*Peer
-	addPeer     chan *Peer
-	delPeer     chan *Peer
-	msgCh       chan *Message
-	broadcastch chan BroadcastTo
+	peers        map[string]*Peer
+	addPeer      chan *Peer
+	delPeer      chan *Peer
+	msgCh        chan *Message
+	broadcastch  chan BroadcastTo
+	broadcastch1 chan BroadcastTo
 }
 
 //server handles the communication, it handles the transport, it keeps track of peers
@@ -62,6 +61,7 @@ func NewServer(cfg ServerConfig) *Server {
 		delPeer:      make(chan *Peer),
 		msgCh:        make(chan *Message, 500),
 		broadcastch:  make(chan BroadcastTo, 500),
+		broadcastch1: make(chan BroadcastTo, 500),
 	}
 
 	tr := NewTCPTransport(s.ListenAddr)
@@ -153,11 +153,16 @@ func (s *Server) loop() {
 	for {
 		select {
 		case msg := <-s.broadcastch:
-
-			// log.Println("mssssss", msg)
-
 			go func() {
 				if err := s.Broadcast(msg); err != nil {
+
+					logrus.Errorf("broadcast error: %s", err)
+				}
+
+			}()
+		case msg1 := <-s.broadcastch1:
+			go func() {
+				if err := s.Broadcast1(msg1); err != nil {
 
 					logrus.Errorf("broadcast error: %s", err)
 				}
@@ -174,7 +179,6 @@ func (s *Server) loop() {
 
 				logrus.Errorf("handle peer error: %s", err)
 			}
-
 		case msg := <-s.msgCh:
 			go func() {
 
@@ -264,13 +268,13 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 	}
 	peer, ok := s.peers[broadcastMsg.To]
 
-	// log.Println(ok)
+
 
 	// fmt.Print(peer)
 
 	//Buffering the message when nodes are not connected.
 
-	log.Println("helppppp")
+
 
 	if ok {
 		// log.Print(peer.status, peer.listenAddr, "broad")
@@ -296,6 +300,56 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 		// 	logrus.Warnf("trying to ping disconnected peer %s", peer.listenAddr)
 		// }
 
+	} else {
+		logrus.Warnf("trying to send to a disconnected peer %s", peer.listenAddr)
+	}
+
+	return nil
+}
+
+func (s *Server) Broadcast1(broadcastMsg BroadcastTo) error {
+
+	msg := NewMessage(s.ListenAddr, broadcastMsg.Payload, broadcastMsg.To)
+
+	// fmt.Print(msg)
+
+	buf := new(bytes.Buffer)
+
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		return err
+	}
+	peer, ok := s.peers[broadcastMsg.To]
+
+	// fmt.Print(peer)
+
+	//Buffering the message when nodes are not connected.
+
+	if ok {
+		// log.Print(peer.status, peer.listenAddr, "broad")
+
+		go func(peer *Peer) {
+			metric := metrics.NewMetrics(peer.conn.RemoteAddr().String())
+
+			metric.FixWriteDuration()
+
+			if err := peer.Send(buf.Bytes()); err != nil {
+				logrus.Errorf("broadcast to peer error: %s", err)
+			}
+
+			if ShowLogs {
+				logrus.WithFields(logrus.Fields{}).Info(metric.String())
+
+			}
+		}(peer)
+
+		// if peer.status  {
+
+		// } else {
+		// 	logrus.Warnf("trying to ping disconnected peer %s", peer.listenAddr)
+		// }
+
+	} else {
+		logrus.Warnf("trying to send to a disconnected peer %s", peer.listenAddr)
 	}
 
 	return nil
@@ -303,9 +357,16 @@ func (s *Server) Broadcast(broadcastMsg BroadcastTo) error {
 
 func (s *Server) SendToPeers(payload any, addr string) {
 
-	// log.Print("cheeeee", payload, addr)
-
 	s.broadcastch <- BroadcastTo{
+		To:      addr,
+		Payload: payload,
+	}
+
+}
+
+func (s *Server) SendToPeers1(payload any, addr string) {
+
+	s.broadcastch1 <- BroadcastTo{
 		To:      addr,
 		Payload: payload,
 	}

@@ -26,6 +26,7 @@ var TopologyInstance Topology
 var ShowLogs = true
 
 func (s *Server) handleNewPeer(peer *Peer) error {
+
 	s.SendHandshake(peer)
 
 	hs, err := s.handShake(peer)
@@ -204,7 +205,7 @@ func (s *Server) handleHearbeat(msg any, from string, to string) error {
 
 	switch recMsg {
 	case recHeart:
-		s.SendToPeers(resHeart, from)
+		s.SendToPeers1(resHeart, from)
 		logrus.WithFields(logrus.Fields{}).Info("PONG" + from)
 		if ShowLogs {
 			logrus.WithFields(logrus.Fields{
@@ -223,16 +224,17 @@ func (s *Server) handleHearbeat(msg any, from string, to string) error {
 			}).Info(metric.String())
 
 		}
-		s.UpdatePeerStatus(from)
+		s.UpdatePeerStatus(from, true)
 
 	}
 	return nil
 }
 
-func (s *Server) UpdatePeerStatus(addr string) {
+func (s *Server) UpdatePeerStatus(addr string, status bool) {
 
 	if peer, ok := s.peers[addr]; ok {
 		peer.LastPingTime = time.Now()
+		peer.status = status
 
 	}
 
@@ -241,7 +243,7 @@ func (s *Server) UpdatePeerStatus(addr string) {
 func (s *Server) IsPeerResponsive() {
 
 	for _, peer := range s.peers {
-		// log.Println("After update check:", peer.LastPingTime)
+		log.Println("After update check:", peer.LastPingTime)
 		elapsedTime := time.Since(peer.LastPingTime)
 		comparisonResult := elapsedTime <= pingInterval*2
 		if comparisonResult {
@@ -252,7 +254,7 @@ func (s *Server) IsPeerResponsive() {
 
 		}
 		log.Print(comparisonResult, peer.listenAddr, "check")
-		if peer.conn == nil {
+		if !peer.status {
 			logrus.WithFields(logrus.Fields{
 				"source": s.ListenAddr,
 			}).Warn("Peer " + peer.listenAddr + " is unresponsive")
@@ -260,7 +262,9 @@ func (s *Server) IsPeerResponsive() {
 			time.Sleep(time.Second * 10)
 			for i := 0; i < retryCount; i++ {
 
-				err := s.ReconnectPeer(peer)
+				delete(s.peers, peer.listenAddr)
+
+				err := s.Connect(peer.listenAddr)
 
 				if err != nil {
 					logrus.Error(err)
@@ -271,7 +275,6 @@ func (s *Server) IsPeerResponsive() {
 					// s.UpdatePeerStatus(peer.listenAddr)
 					peer.LastPingTime = time.Now()
 					peer.status = true
-					s.PingPeer(peer.listenAddr)
 					log.Println("CONNECTED")
 					break
 				}
@@ -283,11 +286,11 @@ func (s *Server) IsPeerResponsive() {
 				}
 
 			}
-			if comparisonResult {
-				break
-				panic("jsbdjsb")
+			// if comparisonResult {
+			// 	break
+			// 	panic("jsbdjsb")
 
-			}
+			// }
 
 		}
 
@@ -354,20 +357,26 @@ func (s *Server) ReconnectPeer(peer *Peer) error {
 }
 
 func (s *Server) Disconnect(addr string) error {
-	p, ok := s.peers[addr]
+	peer, ok := s.peers[addr]
 	if !ok {
 		return fmt.Errorf("%v failed to disconnect: unknown peer: %v", s.ListenAddr, addr)
 	}
 
 	if ok {
-		err := p.conn.Close()
+		err := peer.conn.Close()
+
+		log.Println("peer list before >>>>", s.peers[addr])
+
+		delete(s.peers, peer.listenAddr)
+
+		log.Println("peer list after >>>>", s.peers[addr])
 
 		if err != nil {
 			return fmt.Errorf("%v failed to disconnect: %v", addr, err)
 
 		} else {
 
-			p.conn = nil
+			peer.conn = nil
 
 			log.Println("Connection closed successfully")
 		}
