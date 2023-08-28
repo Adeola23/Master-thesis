@@ -35,7 +35,7 @@ func main() {
 
 ## Functionalities
 
--- Gossip Engine: Facilitates efficient distribution of messages within a network.
+-- Gossip protocol: Each node maintains a list of other nodes it's aware of and share such list with connected peers.
 
 -- Messaging: Send and receive messages between nodes in the network.
 
