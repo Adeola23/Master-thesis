@@ -10,8 +10,8 @@ import (
 
 	"time"
 
+	"git.cs.bham.ac.uk/projects-2022-23/aaa234/network"
 	_ "github.com/sirupsen/logrus"
-	"gitlab.com/adeola/messaging-library/network"
 )
 
 func makeServerAndStart(addr string) *network.Server {
@@ -127,7 +127,7 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 	// go peerC.StartPeerStatusChecker(time.Second * 5)
-	// go peerB.StartPeerStatusChecker(time.Second * 5)
+	go peerB.StartPeerStatusChecker(time.Second * 5)
 	go peerA.StartPeerStatusChecker(time.Second * 5)
 	// log.Print("DONE")
 	//go peerB.StartPeerStatusChecker(time.Second * 3)
@@ -148,7 +148,7 @@ func main() {
 	log.Println("DISCONNNECTED")
 
 	time.Sleep(20 * time.Second)
-	peerB.SendToPeers(network.SendMessage, ":3000")
+	peerB.SendToPeers(network.SendMessage, peerA.ListenAddr)
 
 	// Simulate a peer becoming reconnected
 

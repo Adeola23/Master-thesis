@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
+	"git.cs.bham.ac.uk/projects-2022-23/aaa234/metrics"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/adeola/messaging-library/metrics"
 )
 
 const (

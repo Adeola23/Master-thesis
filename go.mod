@@ -1,4 +1,4 @@
-module gitlab.com/adeola/messaging-library
+module git.cs.bham.ac.uk/projects-2022-23/aaa234
 
 go 1.20
 
