@@ -3,7 +3,6 @@ package main
 import (
 	_ "encoding/gob"
 	_ "fmt"
-	"log"
 
 	_ "log"
 	_ "net"
@@ -30,11 +29,11 @@ func makeServerAndStart(addr string) *network.Server {
 
 func main() {
 	network.TopologyInstance = network.InitializeTopology(true)
-	network.ShowLogs = false
+	network.ShowLogs = true
 
 	peerA := makeServerAndStart(":3000")
 	peerB := makeServerAndStart(":4000")
-	peerC := makeServerAndStart(":4300")
+	// peerC := makeServerAndStart(":4300")
 	// peerD := makeServerAndStart(":4500")
 	// peerE  := makeServerAndStart(":3000")
 	// peerF := makeServerAndStart(":4200")
@@ -49,9 +48,9 @@ func main() {
 
 	peerB.Connect(peerA.ListenAddr)
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
-	peerA.Connect(peerC.ListenAddr)
+	// peerA.Connect(peerC.ListenAddr)
 
 	// time.Sleep(1 * time.Second)
 
@@ -92,8 +91,8 @@ func main() {
 	// totalMessages := 2
 
 	// // Establish connection and initialize sender
-	time.Sleep(1 * time.Second)
-	peerC.SendToPeers("HEYYY", ":3000")
+	// time.Sleep(1 * time.Second)
+	// peerC.SendToPeers("HEYYY", ":3000")
 
 	// start := time.Now()
 
@@ -139,13 +138,13 @@ func main() {
 	// log.Println("DISCONNNECTED")
 
 	time.Sleep(7 * time.Second)
-	peerA.UpdatePeerStatus(":4000", false)
+	peerA.UpdatePeerStatus(peerB.ListenAddr, false)
 
-	// time.Sleep(15 * time.Second)
+	// // time.Sleep(15 * time.Second)
 
-	// peerA.Connect(peerB.ListenAddr)
+	// // peerA.Connect(peerB.ListenAddr)
 
-	log.Println("DISCONNNECTED")
+	// log.Println("DISCONNNECTED")
 
 	time.Sleep(20 * time.Second)
 	peerB.SendToPeers(network.SendMessage, peerA.ListenAddr)

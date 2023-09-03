@@ -75,12 +75,6 @@ func (s *Server) handleNewPeer(peer *Peer) error {
 
 func (s *Server) handlePeerList(l PeerList) error {
 
-	// 	logrus.WithFields(logrus.Fields{
-	// 	"we":s.ListenAddr,
-	// 	"list": l.Peers,
-
-	// }).Info("recieved message")
-
 	for i := 0; i < len(l.Peers); i++ {
 
 		if err := s.Connect(l.Peers[i]); err != nil {
@@ -115,7 +109,6 @@ func (s *Server) handleMessage(msg *Message) error {
 			return s.handleMsg(msg.Payload, msg.From, msg.To)
 
 		} else {
-			log.Println(msg.Payload)
 			return s.handleUnkown(msg.Payload, msg.From, msg.To)
 
 		}
@@ -143,7 +136,6 @@ func (s *Server) handleMsg(msg any, from string, to string) error {
 
 	} else if msg != ResMessage {
 		s.resp(defaultRes, from)
-		log.Println(msg)
 
 	}
 
@@ -244,16 +236,16 @@ func (s *Server) IsPeerResponsive() {
 
 	for _, peer := range s.peers {
 		log.Println("After update check:", peer.LastPingTime)
-		elapsedTime := time.Since(peer.LastPingTime)
-		comparisonResult := elapsedTime <= pingInterval*2
-		if comparisonResult {
-			peer.status = true
-			log.Println(peer.status, peer.listenAddr, peer.LastPingTime, "compa")
-		} else {
-			peer.status = false
+		// elapsedTime := time.Since(peer.LastPingTime)
+		// comparisonResult := elapsedTime <= pingInterval*2
+		// if comparisonResult {
+		// 	peer.status = true
+		// 	log.Println(peer.status, peer.listenAddr, peer.LastPingTime, "compa")
+		// } else {
+		// 	peer.status = false
 
-		}
-		log.Print(comparisonResult, peer.listenAddr, "check")
+		// }
+		// log.Print(comparisonResult, peer.listenAddr, "check")
 		if !peer.status {
 			logrus.WithFields(logrus.Fields{
 				"source": s.ListenAddr,
@@ -275,7 +267,6 @@ func (s *Server) IsPeerResponsive() {
 					// s.UpdatePeerStatus(peer.listenAddr)
 					peer.LastPingTime = time.Now()
 					peer.status = true
-					log.Println("CONNECTED")
 					break
 				}
 
@@ -332,13 +323,6 @@ func (s *Server) ReconnectPeer(peer *Peer) error {
 	s.peerLock.Lock()
 	defer s.peerLock.Unlock()
 
-	//  err := peer.conn.Close() // Close the existing connection
-
-	// log.Println(err, "errrrr")
-	// if err != nil {
-	// 	return err
-	// }
-
 	// Attempt to establish a new connection
 	newConn, err := net.DialTimeout("tcp", peer.listenAddr, 1*time.Second)
 	if err != nil {
@@ -348,8 +332,6 @@ func (s *Server) ReconnectPeer(peer *Peer) error {
 	// Update the peer's connection status and connection object
 	peer.conn = newConn
 	peer.status = true
-
-	log.Println(newConn)
 
 	// Perform any necessary post-connection setup
 

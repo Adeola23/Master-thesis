@@ -98,8 +98,6 @@ func (s *Server) SendHandshake(p *Peer) error {
 
 	}
 
-	log.Println("bufff", buf)
-
 	return p.Send(buf.Bytes())
 
 }
@@ -375,8 +373,6 @@ func (s *Server) handShake(p *Peer) (*Handshake, error) {
 		// log.Println("hand", err)
 		return nil, err
 	}
-
-	log.Print(hs)
 
 	if s.Vesrison != hs.Version {
 		return nil, fmt.Errorf("peer version not match %s", hs.Version)
