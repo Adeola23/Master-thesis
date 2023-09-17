@@ -236,16 +236,7 @@ func (s *Server) IsPeerResponsive() {
 
 	for _, peer := range s.peers {
 		log.Println("After update check:", peer.LastPingTime)
-		// elapsedTime := time.Since(peer.LastPingTime)
-		// comparisonResult := elapsedTime <= pingInterval*2
-		// if comparisonResult {
-		// 	peer.status = true
-		// 	log.Println(peer.status, peer.listenAddr, peer.LastPingTime, "compa")
-		// } else {
-		// 	peer.status = false
-
-		// }
-		// log.Print(comparisonResult, peer.listenAddr, "check")
+		
 		if !peer.status {
 			metric := metrics.NewMetrics(":3000")
 
