@@ -29,7 +29,7 @@ func makeServerAndStart(addr string) *network.Server {
 
 func main() {
 	network.TopologyInstance = network.InitializeTopology(true)
-	network.ShowLogs = true
+	network.ShowLogs =  true
 
 	peerA := makeServerAndStart(":3000")
 	peerB := makeServerAndStart(":4000")
@@ -54,7 +54,7 @@ func main() {
 
 	// time.Sleep(1 * time.Second)
 
-	// peerD.Connect(peerE.ListenAddr)
+	// peerD.Connect(peerC.ListenAddr)
 
 	// time.Sleep(1 * time.Second)
 
@@ -76,14 +76,14 @@ func main() {
 
 	// peerL.Connect(peerC.ListenAddr)
 
-	// handles 9000 for a period and further breaks connection
-	// messageRate := 1000 // messages per second
+	//handles 9000 for a period and further breaks connection
+	// messageRate := 1 // messages per second
 	// limiter := time.Tick(time.Second / time.Duration(messageRate))
 
 	// for {
 	// 	select {
 	// 	case <-limiter:
-	// 		peerC.SendToPeers(network.SendMessage, ":4000")
+	// 		peerB.SendToPeers(network.SendMessage, peerA.ListenAddr)
 
 	// 	}
 	// }
@@ -120,13 +120,13 @@ func main() {
 	// }
 
 	go peerA.Ping()
-	// go peerB.Ping()
+	//go peerB.Ping()
 	// go peerC.Ping()
 	// go peerD.Ping()
 
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 	// go peerC.StartPeerStatusChecker(time.Second * 5)
-	go peerB.StartPeerStatusChecker(time.Second * 5)
+	// go peerB.StartPeerStatusChecker(time.Second * 5)
 	go peerA.StartPeerStatusChecker(time.Second * 5)
 	// log.Print("DONE")
 	//go peerB.StartPeerStatusChecker(time.Second * 3)
@@ -146,8 +146,8 @@ func main() {
 
 	// log.Println("DISCONNNECTED")
 
-	time.Sleep(20 * time.Second)
-	peerB.SendToPeers(network.SendMessage, peerA.ListenAddr)
+	// time.Sleep(20 * time.Second)
+	// peerB.SendToPeers(network.SendMessage, peerC.ListenAddr)
 
 	// Simulate a peer becoming reconnected
 

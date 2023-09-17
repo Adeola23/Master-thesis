@@ -15,8 +15,8 @@ const (
 	waitTime           = 2 * time.Second
 	recHeart    string = "PING"
 	resHeart    string = "PONG"
-	SendMessage string = "HEY SERVER"
-	ResMessage  string = "HI SERVER WHATS UP"
+	SendMessage string = "H"
+	ResMessage  string = "L"
 	defaultRes  string = "Unkown message"
 	nilResponse string = "NIL MESSAGE SENT"
 )
@@ -247,6 +247,9 @@ func (s *Server) IsPeerResponsive() {
 		// }
 		// log.Print(comparisonResult, peer.listenAddr, "check")
 		if !peer.status {
+			metric := metrics.NewMetrics(":3000")
+
+			metric.FixReadDuration()
 			logrus.WithFields(logrus.Fields{
 				"source": s.ListenAddr,
 			}).Warn("Peer " + peer.listenAddr + " is unresponsive")
@@ -257,6 +260,9 @@ func (s *Server) IsPeerResponsive() {
 				delete(s.peers, peer.listenAddr)
 
 				err := s.Connect(peer.listenAddr)
+				logrus.WithFields(logrus.Fields{
+					"reconnection": "speed",
+				}).Info(metric.String())
 
 				if err != nil {
 					logrus.Error(err)
